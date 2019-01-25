@@ -31,6 +31,11 @@
 			}
 		}
 
+		public void TraverseRecursive<T>(IGraph<T> graph, IDFSTraversalVisitor<T> visitor)
+		{
+			TraverseRecursive(graph, graph.Vertices.First(), visitor);
+		}
+
 		private void TraverseRecursive<T>(IGraph<T> graph, T vertex, IDFSTraversalVisitor<T> visitor, Dictionary<T, State> states)
 		{
 			states[vertex] = State.Discovered;

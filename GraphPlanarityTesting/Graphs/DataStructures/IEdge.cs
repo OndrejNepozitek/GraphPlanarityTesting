@@ -9,11 +9,11 @@
 		/// <summary>
 		/// First vertex of the edge.
 		/// </summary>
-		T From { get; }
+		T Source { get; }
 
 		/// <summary>
 		/// Second vertex of the edge.
 		/// </summary>
-		T To { get; }
+		T Target { get; }
 	}
 }

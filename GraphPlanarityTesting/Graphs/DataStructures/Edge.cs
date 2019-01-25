@@ -12,24 +12,24 @@
 		/// <summary>
 		/// First vertex of the edge.
 		/// </summary>
-		public T From { get; }
+		public T Source { get; }
 
 		/// <summary>
 		/// Second vertex of the edge.
 		/// </summary>
-		public T To { get; }
+		public T Target { get; }
 
 		public Edge(T from, T to)
 		{
-			From = from;
-			To = to;
+			Source = from;
+			Target = to;
 		}
 
 		public bool Equals(Edge<T> other)
 		{
 			if (other is null) return false;
 			if (ReferenceEquals(this, other)) return true;
-			return EqualityComparer<T>.Default.Equals(From, other.From) && EqualityComparer<T>.Default.Equals(To, other.To);
+			return EqualityComparer<T>.Default.Equals(Source, other.Source) && EqualityComparer<T>.Default.Equals(Target, other.Target);
 		}
 
 		public override bool Equals(object obj)
@@ -44,7 +44,7 @@
 		{
 			unchecked
 			{
-				return (EqualityComparer<T>.Default.GetHashCode(From) * 397) ^ EqualityComparer<T>.Default.GetHashCode(To);
+				return (EqualityComparer<T>.Default.GetHashCode(Source) * 397) ^ EqualityComparer<T>.Default.GetHashCode(Target);
 			}
 		}
 	}
