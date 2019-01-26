@@ -4,6 +4,7 @@
 	using System.Collections.Generic;
 	using GraphPlanarityTesting.Graphs.DataStructures;
 	using GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold;
+	using GraphPlanarityTesting.PlanarityTesting.PlanarFaceTraversal;
 	using NUnit.Framework;
 
 	[TestFixture]
@@ -158,6 +159,18 @@
 			}
 		}
 
+		[Test]
+		public void Test7()
+		{
+			var boyerMyrvold = new BoyerMyrvold();
+			var graph = GetOneCycle(4);
+			boyerMyrvold.IsPlanar(graph, out var embedding);
+
+			var planarFaceTraversal = new PlanarFaceTraversal();
+			var planarFaceVisitor = new GetPlanarFacesVisitor<int>();
+			planarFaceTraversal.Traverse(graph, embedding, planarFaceVisitor);
+		}
+
 		/// <summary>
 		/// Checks that graphs consisting of one big cycle are planar.
 		/// </summary>
@@ -172,7 +185,8 @@
 			{
 				var graph = GetOneCycle(i);
 
-				Assert.That(boyerMyrvold.IsPlanar(graph, out var _), Is.EqualTo(true));
+				Assert.That(boyerMyrvold.IsPlanar(graph, out var embedding), Is.EqualTo(true));
+				Assert.That(GetFaces(graph, embedding).Count, Is.EqualTo(2));
 			}
 		}
 
@@ -310,6 +324,15 @@
 			graph.AddEdge(verticesCount - 1, 0);
 
 			return graph;
+		}
+
+		private List<List<int>> GetFaces(IGraph<int> graph, Dictionary<int, List<IEdge<int>>> embedding)
+		{
+			var planarFaceTraversal = new PlanarFaceTraversal();
+			var planarFaceVisitor = new GetPlanarFacesVisitor<int>();
+			planarFaceTraversal.Traverse(graph, embedding, planarFaceVisitor);
+
+			return planarFaceVisitor.Faces;
 		}
 	}
 }

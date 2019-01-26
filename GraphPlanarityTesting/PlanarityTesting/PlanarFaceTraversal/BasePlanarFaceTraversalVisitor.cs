@@ -2,7 +2,7 @@
 {
 	using Graphs.DataStructures;
 
-	public class BasePlanarFaceTraversalVisitor<T> : IPlanarFaceTraversalVisitor<T>
+	public abstract class BasePlanarFaceTraversalVisitor<T> : IPlanarFaceTraversalVisitor<T>
 	{
 		public virtual void BeginTraversal()
 		{
