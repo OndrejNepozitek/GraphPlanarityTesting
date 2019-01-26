@@ -30,9 +30,13 @@
 
 		public T Anchor => anchor;
 
-		public FaceHandle(T anchor)
+		public FaceHandle(T anchor, T nullVertex)
 		{
 			this.anchor = anchor;
+			cachedFirstVertex = nullVertex;
+			trueFirstVertex = nullVertex;
+			cachedSecondVertex = nullVertex;
+			trueSecondVertex = nullVertex;
 		}
 
 		public FaceHandle(T anchor, IEdge<T> initialEdge)
@@ -161,7 +165,7 @@
 			}
 			else
 			{
-				s += "no edges";
+				// s += "no edges";
 			}
 
 			return s;

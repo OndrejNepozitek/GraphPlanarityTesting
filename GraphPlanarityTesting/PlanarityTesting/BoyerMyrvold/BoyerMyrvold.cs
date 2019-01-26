@@ -8,7 +8,7 @@
 
 	public class BoyerMyrvold
 	{
-		public static int NullVertex = int.MinValue;
+		public static int NullVertex = -1;
 
 		private Dictionary<int, int> dfsNumberMap;
 
@@ -107,8 +107,8 @@
 				}
 				else
 				{
-					faceHandlesMap[vertex] = new FaceHandle<int>(vertex);
-					dfsChildHandlesMap[vertex] = new FaceHandle<int>(dfsParent);
+					faceHandlesMap[vertex] = new FaceHandle<int>(vertex, NullVertex);
+					dfsChildHandlesMap[vertex] = new FaceHandle<int>(dfsParent, NullVertex);
 				}
 
 				canonicalDFSChildMap[vertex] = vertex;
@@ -140,7 +140,7 @@
 					return false;
 				}
 
-				Dump();
+				// Dump();
 			}
 
 			Cleanup();
@@ -150,7 +150,7 @@
 			foreach (var vertex in graph.Vertices)
 			{
 				var faceHandle = faceHandlesMap[vertex];
-				embedding[vertex] = faceHandle?.GetEdges().ToList();
+				embedding[vertex] = faceHandle.GetEdges()?.ToList();
 			}
 
 			return true;
@@ -158,20 +158,20 @@
 
 		private void Walkup(int vertex)
 		{
-			Console.WriteLine($"Walkup {vertex}");
+			// Console.WriteLine($"Walkup {vertex}");
 
 			foreach (var neighbour in graph.GetNeighbours(vertex))
 			{
 				Walkup(vertex, new Edge<int>(vertex, neighbour));
 			}
 
-			Console.WriteLine($"Walkup end");
-			Console.WriteLine();
+			// Console.WriteLine($"Walkup end");
+			// Console.WriteLine();
 		}
 
 		private void Walkup(int vertex, IEdge<int> edge)
 		{
-			Console.WriteLine($"Edge {edge}");
+			// Console.WriteLine($"Edge {edge}");
 
 			var source = edge.Source;
 			var target = edge.Target;
@@ -187,7 +187,7 @@
 			if (dfsNumberMap[w] < dfsNumberMap[vertex] || edge.Equals(dfsEdgeMap[w]))
 				return;
 
-			Console.WriteLine("Edge not embedded and back edge");
+			// Console.WriteLine("Edge not embedded and back edge");
 
 			backedges[w].Add(edge);
 			var timestamp = dfsNumberMap[vertex];
@@ -196,17 +196,34 @@
 
 			foreach (var faceVertex in IterateFirstSide(w))
 			{
-				Console.WriteLine($"Face vertex {faceVertex}");
+				// Console.WriteLine($"Face vertex {faceVertex}");
 			}
 
 			var leadVertex = w;
+
+			if (vertex == 0)
+			{
+				var ss = 1;
+			}
 
 			while (true)
 			{
 				var foundRoot = true;
 
 				// TODO: this is slow - should be walked in parallel
-				foreach (var faceVertex in IterateFirstSide(leadVertex, false))
+				//foreach (var faceVertex in IterateFirstSide(leadVertex, false))
+				//{
+				//	if (visited[faceVertex] == timestamp)
+				//	{
+				//		foundRoot = false;
+				//		break;
+				//	}
+
+				//	leadVertex = faceVertex;
+				//	visited[leadVertex] = timestamp;
+				//	// Console.WriteLine($"Lead vertex {leadVertex}");
+				//}
+				foreach (var faceVertex in IterateBothSides(leadVertex))
 				{
 					if (visited[faceVertex] == timestamp)
 					{
@@ -216,7 +233,7 @@
 
 					leadVertex = faceVertex;
 					visited[leadVertex] = timestamp;
-					Console.WriteLine($"Lead vertex {leadVertex}");
+					// Console.WriteLine($"Lead vertex {leadVertex}");
 				}
 
 				if (foundRoot)
@@ -224,7 +241,20 @@
 					var dfsChild = canonicalDFSChildMap[leadVertex];
 					var parent = parentMap[dfsChild];
 
-					Console.WriteLine($"Found DFS child {dfsChild}, found parent {parent}");
+					// TODO: different than in Boost
+					// Probably due to the fact that we don't traverse both side of the face in parallel,
+					// it happened that the same dfsChild was added twice.
+					// This check ensures
+					if ((pertinentRootsMap[parent].Last != null && pertinentRootsMap[parent].Last.Value == dfsChildHandlesMap[dfsChild])
+					    || (pertinentRootsMap[parent].First != null && pertinentRootsMap[parent].First.Value == dfsChildHandlesMap[dfsChild]))
+					{
+						throw new InvalidOperationException("Must not happen!");
+					}
+
+					// Console.WriteLine($"Found DFS child {dfsChild}, found parent {parent}");
+
+					visited[dfsChildHandlesMap[dfsChild].FirstVertex] = timestamp;
+					visited[dfsChildHandlesMap[dfsChild].SecondVertex] = timestamp;
 
 					if (lowPointMap[dfsChild] < dfsNumberMap[vertex] ||
 					    leastAncestorMap[dfsChild] < dfsNumberMap[vertex]
@@ -253,7 +283,7 @@
 
 		public bool Walkdown(int vertex)
 		{
-			Console.WriteLine($"Walkdown {vertex}");
+			// Console.WriteLine($"Walkdown {vertex}");
 
 			int w;
 
@@ -265,7 +295,7 @@
 				pertinentRootsMap[vertex].RemoveFirst();
 				var currentFaceHandle = rootFaceHandle;
 
-				Console.WriteLine($"Pertinent root anchor {rootFaceHandle.Anchor}");
+				// Console.WriteLine($"Pertinent root anchor {rootFaceHandle.Anchor}");
 
 				while (true)
 				{
@@ -276,11 +306,11 @@
 
 					foreach (var faceVertex in IterateFirstSide(currentFaceHandle))
 					{
-						Console.WriteLine($"First side iteration {faceVertex}, pertinent = {Pertinent(faceVertex, vertex)}, externally active = {ExternallyActive(faceVertex, vertex)}");
+						// Console.WriteLine($"First side iteration {faceVertex}, pertinent = {Pertinent(faceVertex, vertex)}, externally active = {ExternallyActive(faceVertex, vertex)}");
 
 						if (Pertinent(faceVertex, vertex) || ExternallyActive(faceVertex, vertex))
 						{
-							Console.WriteLine($"First side iteration pertinent or externally active");
+							// Console.WriteLine($"First side iteration pertinent or externally active");
 
 							firstSideVertex = faceVertex;
 							secondSideVertex = faceVertex;
@@ -292,24 +322,24 @@
 
 					if (firstSideVertex == NullVertex || firstSideVertex == currentFaceHandle.Anchor)
 					{
-						Console.WriteLine($"Break");
+						// Console.WriteLine($"Break");
 						break;
 					}
 						
 					foreach (var faceVertex in IterateSecondSide(currentFaceHandle))
 					{
-						Console.WriteLine($"Second side iteration {faceVertex}, pertinent = {Pertinent(faceVertex, vertex)}, externally active = {ExternallyActive(faceVertex, vertex)}");
+						// Console.WriteLine($"Second side iteration {faceVertex}, pertinent = {Pertinent(faceVertex, vertex)}, externally active = {ExternallyActive(faceVertex, vertex)}");
 
 						if (Pertinent(faceVertex, vertex) || ExternallyActive(faceVertex, vertex))
 						{
-							Console.WriteLine($"Second side iteration pertinent or externally active");
+							// Console.WriteLine($"Second side iteration pertinent or externally active");
 
 							secondSideVertex = faceVertex;
 							break;
 						}
 
 						secondTail = faceVertex;
-						Console.WriteLine($"Second tail {faceVertex}");
+						// Console.WriteLine($"Second tail {faceVertex}");
 					}
 
 					var chosen = NullVertex;
@@ -384,30 +414,30 @@
 
 						if (faceHandlesMap[firstSideVertex].FirstVertex == firstTail)
 						{
-							Console.WriteLine("Case aa");
+							// Console.WriteLine("Case aa");
 							faceHandlesMap[firstSideVertex].SetFirstVertex(vertex);
 						}
 						else
 						{
-							Console.WriteLine("Case ab");
+							// Console.WriteLine("Case ab");
 							faceHandlesMap[firstSideVertex].SetSecondVertex(vertex);
 						}
 
 						if (faceHandlesMap[secondSideVertex].FirstVertex == secondTail)
 						{
-							Console.WriteLine("Case ba");
+							// Console.WriteLine("Case ba");
 							faceHandlesMap[secondSideVertex].SetFirstVertex(vertex);
 						}
 						else
 						{
-							Console.WriteLine("Case bb");
+							// Console.WriteLine("Case bb");
 							faceHandlesMap[secondSideVertex].SetSecondVertex(vertex);
 						}
 
 						break;
 					}
 
-					Console.WriteLine($"Chosen {chosen}");
+					// Console.WriteLine($"Chosen {chosen}");
 
 					// When we unwind the stack, we need to know which direction
 					// we came down from on the top face handle
@@ -430,12 +460,12 @@
 
 							if (choseFirstLowerPath)
 							{
-								Console.WriteLine($"Push first {edge}");
+								// Console.WriteLine($"Push first {edge}");
 								faceHandlesMap[chosen].PushFirst(edge);
 							}
 							else
 							{
-								Console.WriteLine($"Push second {edge}");
+								// Console.WriteLine($"Push second {edge}");
 								faceHandlesMap[chosen].PushSecond(edge);
 							}
 						}
@@ -475,25 +505,25 @@
 
 						if (topPathFollowsFirst && bottomPathFollowsFirst)
 						{
-							Console.WriteLine("Case 1");
+							// Console.WriteLine("Case 1");
 							bottomHandle.Flip();
 							topHandle.GlueFirstToSecond(bottomHandle);
 						}
 						else if (!topPathFollowsFirst && bottomPathFollowsFirst)
 						{
-							Console.WriteLine("Case 2");
+							// Console.WriteLine("Case 2");
 							flipped[bottomDFSChild] = true;
 							topHandle.GlueSecondToFirst(bottomHandle);
 						}
 						else if (topPathFollowsFirst && !bottomPathFollowsFirst)
 						{
-							Console.WriteLine("Case 3");
+							// Console.WriteLine("Case 3");
 							flipped[bottomDFSChild] = true;
 							topHandle.GlueFirstToSecond(bottomHandle);
 						}
 						else //!top_path_follows_first && !bottom_path_follows_first
 						{
-							Console.WriteLine("Case 4");
+							// Console.WriteLine("Case 4");
 							bottomHandle.Flip();
 							topHandle.GlueSecondToFirst(bottomHandle);
 						}
@@ -511,12 +541,12 @@
 					{
 						if (nextBottomFollowsFirst)
 						{
-							Console.WriteLine($"- Push first {edge}");
+							// Console.WriteLine($"- Push first {edge}");
 							rootFaceHandle.PushFirst(edge);
 						}
 						else
 						{
-							Console.WriteLine($"- Push second {edge}");
+							// Console.WriteLine($"- Push second {edge}");
 							rootFaceHandle.PushSecond(edge);
 						}
 					}
@@ -694,6 +724,77 @@
 				}
 			}
 		}
+
+		// Always visits follow!
+		public IEnumerable<int> IterateBothSides(int vertex)
+		{
+			var face = faceHandlesMap[vertex];
+
+			return IterateBothSides(face);
+		}
+
+		/// <summary>
+		/// Iterates over both sides of the face in parallel until the root is found.
+		/// </summary>
+		/// <remarks>
+		/// Only "follow" vertices are returned. 
+		/// 
+		/// The first returned vertex is the anchor of a given face. Both iterators are then
+		/// advanced so that anchor point is not returned twice. After that, both iterators
+		/// alternate in returning the current follow vertex. If any of the iterators encounter
+		/// the root vertex, the whole process ends.
+		/// </remarks>
+		/// <param name="face"></param>
+		/// <returns></returns>
+		public IEnumerable<int> IterateBothSides(FaceHandle<int> face)
+		{
+			var firstEnumerable = IterateFirstSide(face, false);
+			var secondEnumerable = IterateSecondSide(face, false);
+			var firstActive = false;
+
+			using (var firstEnumerator = firstEnumerable.GetEnumerator())
+			{
+				using (var secondEnumerator = secondEnumerable.GetEnumerator())
+				{
+					if (!firstEnumerator.MoveNext() || !secondEnumerator.MoveNext())
+					{
+						yield break;
+					}
+
+					yield return firstEnumerator.Current;
+
+					if (!firstEnumerator.MoveNext() || !secondEnumerator.MoveNext())
+					{
+						yield break;
+					}
+
+					while (true)
+					{
+						if (firstActive)
+						{
+							yield return firstEnumerator.Current;
+
+							if (!firstEnumerator.MoveNext())
+							{
+								yield break;
+							}
+						}
+						else
+						{
+							yield return secondEnumerator.Current;
+
+							if (!secondEnumerator.MoveNext())
+							{
+								yield break;
+							}
+						}
+
+						firstActive = !firstActive;
+					}
+				}
+			}
+		}
+
 
 		private class MergeInfo
 		{
