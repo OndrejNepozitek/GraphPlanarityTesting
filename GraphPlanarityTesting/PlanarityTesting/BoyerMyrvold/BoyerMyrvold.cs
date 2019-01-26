@@ -34,7 +34,7 @@
 
 		private Dictionary<int, int> canonicalDFSChildMap;
 
-		private Dictionary<int, List<FaceHandle<int>>> pertinentRootsMap;
+		private Dictionary<int, LinkedList<FaceHandle<int>>> pertinentRootsMap;
 
 		private Dictionary<int, LinkedList<int>> separatedDFSChildListMap;
 
@@ -48,6 +48,10 @@
 
 		private Dictionary<int, int> visited;
 
+		private Stack<MergeInfo> mergeStack;
+
+		private Dictionary<int, bool> flipped;
+
 		private IGraph<int> graph;
 
 		public bool IsPlanar(IGraph<int> graph)
@@ -59,7 +63,7 @@
 			dfsEdgeMap = new Dictionary<int, IEdge<int>>();
 			faceHandlesMap = new Dictionary<int, FaceHandle<int>>();
 			dfsChildHandlesMap = new Dictionary<int, FaceHandle<int>>();
-			pertinentRootsMap = new Dictionary<int, List<FaceHandle<int>>>();
+			pertinentRootsMap = new Dictionary<int, LinkedList<FaceHandle<int>>>();
 			separatedDFSChildListMap = new Dictionary<int, LinkedList<int>>();
 			separatedNodeInParentList = new Dictionary<int, LinkedListNode<int>>();
 			canonicalDFSChildMap = new Dictionary<int, int>();
@@ -67,6 +71,8 @@
 			backedges = new Dictionary<int, List<IEdge<int>>>();
 			backedgeFlag = new Dictionary<int, int>();
 			visited = new Dictionary<int, int>();
+			mergeStack = new Stack<MergeInfo>();
+			flipped = new Dictionary<int, bool>();
 			this.graph = graph;
 
 			var visitor = new DFSTraversalVisitor<int>(dfsNumberMap, parentMap, lowPointMap, leastAncestorMap, dfsEdgeMap);
@@ -78,6 +84,7 @@
 			{
 				backedges.Add(vertex, new List<IEdge<int>>());
 				visited[vertex] = Int32.MaxValue; // TODO: not ideal
+				backedgeFlag[vertex] = graph.VerticesCount + 1;
 			}
 
 			// Sort vertices by dfs number ASC
@@ -104,7 +111,7 @@
 				}
 
 				canonicalDFSChildMap[vertex] = vertex;
-				pertinentRootsMap[vertex] = new List<FaceHandle<int>>();
+				pertinentRootsMap[vertex] = new LinkedList<FaceHandle<int>>();
 				separatedDFSChildListMap[vertex] = new LinkedList<int>();
 			}
 
@@ -125,6 +132,13 @@
 			foreach (var vertex in verticesByDFSNumber.Reverse())
 			{
 				Walkup(vertex);
+
+				if (!Walkdown(vertex))
+				{
+					return false;
+				}
+
+				Dump();
 			}
 
 			return true;
@@ -204,11 +218,11 @@
 					    leastAncestorMap[dfsChild] < dfsNumberMap[vertex]
 					)
 					{
-						pertinentRootsMap[parent].Add(dfsChildHandlesMap[dfsChild]);
+						pertinentRootsMap[parent].AddLast(dfsChildHandlesMap[dfsChild]);
 					}
 					else
 					{
-						pertinentRootsMap[parent].Insert(0, dfsChildHandlesMap[dfsChild]);
+						pertinentRootsMap[parent].AddFirst(dfsChildHandlesMap[dfsChild]);
 					}
 
 					if (parent != vertex && visited[parent] != timestamp)
@@ -225,6 +239,332 @@
 			}
 		}
 
+		public bool Walkdown(int vertex)
+		{
+			Console.WriteLine($"Walkdown {vertex}");
+
+			int w;
+
+			mergeStack.Clear();
+
+			while (pertinentRootsMap[vertex].Count != 0)
+			{
+				var rootFaceHandle = pertinentRootsMap[vertex].First.Value;
+				pertinentRootsMap[vertex].RemoveFirst();
+				var currentFaceHandle = rootFaceHandle;
+
+				Console.WriteLine($"Pertinent root anchor {rootFaceHandle.Anchor}");
+
+				while (true)
+				{
+					var firstSideVertex = NullVertex;
+					var secondSideVertex = NullVertex;
+					var firstTail = currentFaceHandle.Anchor;
+					var secondTail = currentFaceHandle.Anchor;
+
+					foreach (var faceVertex in IterateFirstSide(currentFaceHandle))
+					{
+						Console.WriteLine($"First side iteration {faceVertex}, pertinent = {Pertinent(faceVertex, vertex)}, externally active = {ExternallyActive(faceVertex, vertex)}");
+
+						if (Pertinent(faceVertex, vertex) || ExternallyActive(faceVertex, vertex))
+						{
+							Console.WriteLine($"First side iteration pertinent or externally active");
+
+							firstSideVertex = faceVertex;
+							secondSideVertex = faceVertex;
+							break;
+						}
+
+						firstTail = faceVertex;
+					}
+
+					if (firstSideVertex == NullVertex || firstSideVertex == currentFaceHandle.Anchor)
+					{
+						Console.WriteLine($"Break");
+						break;
+					}
+						
+					foreach (var faceVertex in IterateSecondSide(currentFaceHandle))
+					{
+						Console.WriteLine($"Second side iteration {faceVertex}, pertinent = {Pertinent(faceVertex, vertex)}, externally active = {ExternallyActive(faceVertex, vertex)}");
+
+						if (Pertinent(faceVertex, vertex) || ExternallyActive(faceVertex, vertex))
+						{
+							Console.WriteLine($"Second side iteration pertinent or externally active");
+
+							secondSideVertex = faceVertex;
+							break;
+						}
+
+						secondTail = faceVertex;
+						Console.WriteLine($"Second tail {faceVertex}");
+					}
+
+					var chosen = NullVertex;
+					var choseFirstUpperPath = false;
+
+					if (InternallyActive(firstSideVertex, vertex))
+					{
+						chosen = firstSideVertex;
+						choseFirstUpperPath = true;
+					}
+					else if (InternallyActive(secondSideVertex, vertex))
+					{
+						chosen = secondSideVertex;
+						choseFirstUpperPath = false;
+					} 
+					else if (Pertinent(firstSideVertex, vertex))
+					{
+						chosen = firstSideVertex;
+						choseFirstUpperPath = true;
+					}
+					else if (Pertinent(secondSideVertex, vertex))
+					{
+						chosen = secondSideVertex;
+						choseFirstUpperPath = false;
+					}
+					else
+					{
+						// If there's a pertinent vertex on the lower face
+						// between the first_face_itr and the second_face_itr,
+						// this graph isn't planar.
+
+						// TODO:
+						// throw new NotImplementedException();
+
+
+						// Otherwise, the fact that we didn't find a pertinent
+						// vertex on this face is fine - we should set the
+						// short-circuit edges and break out of this loop to
+						// start looking at a different pertinent root.
+
+						if (firstSideVertex == secondSideVertex)
+						{
+							if (firstTail != vertex)
+							{
+								var first = faceHandlesMap[firstTail].FirstVertex;
+								var second = faceHandlesMap[firstTail].SecondVertex;
+
+								var tmpFirstTail = firstTail;
+								firstTail = first == firstSideVertex ? second : first;
+								firstSideVertex = tmpFirstTail;
+							}
+							else if (secondTail != vertex)
+							{
+								var first = faceHandlesMap[secondTail].FirstVertex;
+								var second = faceHandlesMap[secondTail].SecondVertex;
+
+								var tmpSecondTrail = secondTail;
+								secondTail = first == secondSideVertex ? second : first;
+								secondSideVertex = tmpSecondTrail;
+							}
+							else
+							{
+								break;
+							}
+						}
+
+						canonicalDFSChildMap[firstSideVertex] = canonicalDFSChildMap[rootFaceHandle.FirstVertex];
+						canonicalDFSChildMap[secondSideVertex] = canonicalDFSChildMap[rootFaceHandle.SecondVertex];
+
+						rootFaceHandle.SetFirstVertex(firstSideVertex);
+						rootFaceHandle.SetSecondVertex(secondSideVertex);
+
+						if (faceHandlesMap[firstSideVertex].FirstVertex == firstTail)
+						{
+							Console.WriteLine("Case aa");
+							faceHandlesMap[firstSideVertex].SetFirstVertex(vertex);
+						}
+						else
+						{
+							Console.WriteLine("Case ab");
+							faceHandlesMap[firstSideVertex].SetSecondVertex(vertex);
+						}
+
+						if (faceHandlesMap[secondSideVertex].FirstVertex == secondTail)
+						{
+							Console.WriteLine("Case ba");
+							faceHandlesMap[secondSideVertex].SetFirstVertex(vertex);
+						}
+						else
+						{
+							Console.WriteLine("Case bb");
+							faceHandlesMap[secondSideVertex].SetSecondVertex(vertex);
+						}
+
+						break;
+					}
+
+					Console.WriteLine($"Chosen {chosen}");
+
+					// When we unwind the stack, we need to know which direction
+					// we came down from on the top face handle
+
+					var choseFirstLowerPath = (choseFirstUpperPath && faceHandlesMap[chosen].FirstVertex == firstTail)
+					                          || (!choseFirstUpperPath && faceHandlesMap[chosen].FirstVertex == secondTail);
+
+					//If there's a backedge at the chosen vertex, embed it now
+
+					if (backedgeFlag[chosen] == dfsNumberMap[vertex])
+					{
+						w = chosen;
+
+						backedgeFlag[chosen] = graph.VerticesCount + 1; // TODO: check if consistent
+						// add_to_merge_points(chosen, StoreOldHandlesPolicy());
+
+						foreach (var edge in backedges[chosen])
+						{
+							// add_to_embedded_edges(e, StoreOldHandlesPolicy());
+
+							if (choseFirstLowerPath)
+							{
+								Console.WriteLine($"Push first {edge}");
+								faceHandlesMap[chosen].PushFirst(edge);
+							}
+							else
+							{
+								Console.WriteLine($"Push second {edge}");
+								faceHandlesMap[chosen].PushSecond(edge);
+							}
+						}
+					}
+					else
+					{
+						mergeStack.Push(new MergeInfo(chosen, choseFirstUpperPath, choseFirstLowerPath));
+						currentFaceHandle = pertinentRootsMap[chosen].First.Value;
+						continue;
+					}
+
+					//Unwind the merge stack to the root, merging all bicomps
+					var bottomPathFollowsFirst = false;
+					var topPathFollowsFirst = false;
+					var nextBottomFollowsFirst = choseFirstUpperPath;
+
+					var mergePoint = chosen;
+
+					while (mergeStack.Count != 0)
+					{
+						bottomPathFollowsFirst = nextBottomFollowsFirst;
+						var mergeInfo = mergeStack.Pop();
+
+						mergePoint = mergeInfo.Vertex;
+						nextBottomFollowsFirst = mergeInfo.ChoseFirstUpperPath;
+						topPathFollowsFirst = mergeInfo.ChoseFirstLowerPath;
+
+						var topHandle = faceHandlesMap[mergePoint];
+						var bottomHandle = pertinentRootsMap[mergePoint].First.Value;
+						var bottomDFSChild = canonicalDFSChildMap[pertinentRootsMap[mergePoint].First.Value.FirstVertex];
+
+						RemoveVertexFromSeparatedDFSChildList(canonicalDFSChildMap[pertinentRootsMap[mergePoint].First.Value.FirstVertex]);
+
+						pertinentRootsMap[mergePoint].RemoveFirst();
+
+						// add_to_merge_points(top_handle.get_anchor(), StoreOldHandlesPolicy());
+
+						if (topPathFollowsFirst && bottomPathFollowsFirst)
+						{
+							Console.WriteLine("Case 1");
+							bottomHandle.Flip();
+							topHandle.GlueFirstToSecond(bottomHandle);
+						}
+						else if (!topPathFollowsFirst && bottomPathFollowsFirst)
+						{
+							Console.WriteLine("Case 2");
+							flipped[bottomDFSChild] = true;
+							topHandle.GlueSecondToFirst(bottomHandle);
+						}
+						else if (topPathFollowsFirst && !bottomPathFollowsFirst)
+						{
+							Console.WriteLine("Case 3");
+							flipped[bottomDFSChild] = true;
+							topHandle.GlueFirstToSecond(bottomHandle);
+						}
+						else //!top_path_follows_first && !bottom_path_follows_first
+						{
+							Console.WriteLine("Case 4");
+							bottomHandle.Flip();
+							topHandle.GlueSecondToFirst(bottomHandle);
+						}
+					}
+
+					//Finally, embed all edges (v,w) at their upper end points
+
+					canonicalDFSChildMap[w] = canonicalDFSChildMap[rootFaceHandle.FirstVertex];
+
+					//add_to_merge_points(root_face_handle.get_anchor(),
+					//	StoreOldHandlesPolicy()
+					//);
+
+					foreach (var edge in backedges[chosen])
+					{
+						if (nextBottomFollowsFirst)
+						{
+							Console.WriteLine($"- Push first {edge}");
+							rootFaceHandle.PushFirst(edge);
+						}
+						else
+						{
+							Console.WriteLine($"- Push second {edge}");
+							rootFaceHandle.PushSecond(edge);
+						}
+					}
+
+					backedges[chosen].Clear();
+					currentFaceHandle = rootFaceHandle;
+				}
+			}
+
+			return true;
+		}
+
+		private void Dump()
+		{
+			Console.WriteLine();
+			Console.WriteLine("-- DUMP START --");
+
+			foreach (var faceHandle in faceHandlesMap)
+			{
+				Console.WriteLine($"{faceHandle.Key} - {faceHandle.Value}");
+			}
+
+			Console.WriteLine("-- DUMP END --");
+			Console.WriteLine();
+		}
+
+		private bool Pertinent(int vertex, int otherVertex)
+		{
+			// w is pertinent with respect to v if there is a backedge (v,w) or if
+			// w is the root of a bicomp that contains a pertinent vertex.
+
+			return backedgeFlag[vertex] == dfsNumberMap[otherVertex] || pertinentRootsMap[vertex].Count != 0;
+		}
+
+		private bool ExternallyActive(int vertex, int otherVertex)
+		{
+			// Let a be any proper depth-first search ancestor of v. w is externally
+			// active with respect to v if there exists a backedge (a,w) or a
+			// backedge (a,w_0) for some w_0 in a descendent bicomp of w.
+
+			var otherVertexDFSNumber = dfsNumberMap[otherVertex];
+
+			return leastAncestorMap[vertex] < otherVertexDFSNumber
+			       || (separatedDFSChildListMap[vertex].Count != 0 &&
+			           lowPointMap[separatedDFSChildListMap[vertex].First.Value] < otherVertexDFSNumber);
+		}
+
+		private bool InternallyActive(int vertex, int otherVertex)
+		{
+			return Pertinent(vertex, otherVertex) && !ExternallyActive(vertex, otherVertex);
+		}
+
+		private void RemoveVertexFromSeparatedDFSChildList(int vertex)
+		{
+			var toDelete = separatedNodeInParentList[vertex];
+			var list = separatedDFSChildListMap[parentMap[vertex]];
+
+			list.Remove(toDelete);
+		}
+
 		public IEnumerable<int> IterateFirstSide(int vertex, bool visitLead = true)
 		{
 			var face = faceHandlesMap[vertex];
@@ -232,10 +572,20 @@
 			return IterateFace(face, x => x.FirstVertex, visitLead);
 		}
 
+		public IEnumerable<int> IterateFirstSide(FaceHandle<int> face, bool visitLead = true)
+		{
+			return IterateFace(face, x => x.FirstVertex, visitLead);
+		}
+
 		public IEnumerable<int> IterateSecondSide(int vertex, bool visitLead = true)
 		{
 			var face = faceHandlesMap[vertex];
 
+			return IterateFace(face, x => x.SecondVertex, visitLead);
+		}
+
+		public IEnumerable<int> IterateSecondSide(FaceHandle<int> face, bool visitLead = true)
+		{
 			return IterateFace(face, x => x.SecondVertex, visitLead);
 		}
 
@@ -255,7 +605,9 @@
 				{
 					yield return follow;
 				}
-				
+
+				face = faceHandlesMap[lead];
+
 				var first = face.FirstVertex;
 				var second = face.SecondVertex;
 
@@ -273,8 +625,22 @@
 				{
 					yield break;
 				}
+			}
+		}
 
-				face = faceHandlesMap[lead];
+		private class MergeInfo
+		{
+			public int Vertex { get; }
+
+			public bool ChoseFirstUpperPath { get; }
+
+			public bool ChoseFirstLowerPath { get; }
+
+			public MergeInfo(int vertex, bool choseFirstUpperPath, bool choseFirstLowerPath)
+			{
+				Vertex = vertex;
+				ChoseFirstUpperPath = choseFirstUpperPath;
+				ChoseFirstLowerPath = choseFirstLowerPath;
 			}
 		}
 	}

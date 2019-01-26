@@ -37,6 +37,11 @@
 			graph.AddEdge(2, 4);
 			// graph.AddEdge(3, 4);
 
+			//graph.AddEdge(0, 5);
+			//graph.AddEdge(5, 6);
+			//graph.AddEdge(6, 7);
+			//graph.AddEdge(7, 0);
+
 			boyerMyrvold.IsPlanar(graph);
 		}
 	}

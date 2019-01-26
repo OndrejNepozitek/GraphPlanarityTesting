@@ -2,6 +2,7 @@
 {
 	using System;
 	using System.Collections.Generic;
+	using System.Linq;
 	using Graphs.DataStructures;
 
 	public class FaceHandle<T>
@@ -13,7 +14,7 @@
 		private IEdge<T> cachedFirstEdge;
 		private IEdge<T> cachedSecondEdge;
 		private T anchor;
-		private List<IEdge<T>> edgeList;
+		private LinkedList<IEdge<T>> edgeList;
 
 		public T FirstVertex => cachedFirstVertex;
 
@@ -48,47 +49,106 @@
 			trueFirstVertex = otherVertex;
 			trueSecondVertex = otherVertex;
 
-			edgeList = new List<IEdge<T>> {initialEdge};
+			edgeList = new LinkedList<IEdge<T>>();
+			edgeList.AddLast(initialEdge);
 		}
 
 		public void GlueFirstToSecond(FaceHandle<T> bottom)
 		{
-			throw new NotImplementedException();
+			edgeList.PrependRange(bottom.edgeList); // TODO: slow
+			trueFirstVertex = bottom.trueFirstVertex;
+			cachedFirstVertex = bottom.cachedFirstVertex;
+			cachedFirstEdge = bottom.cachedFirstEdge;
 		}
 
 		public void GlueSecondToFirst(FaceHandle<T> bottom)
 		{
-			throw new NotImplementedException();
+			edgeList.AppendRange(bottom.edgeList); // TODO: slow
+			trueSecondVertex = bottom.trueSecondVertex;
+			cachedSecondVertex = bottom.cachedSecondVertex;
+			cachedSecondEdge = bottom.cachedSecondEdge;
 		}
 
 		public void Flip()
 		{
-			throw new NotImplementedException();
+			edgeList = new LinkedList<IEdge<T>>(edgeList.Reverse());
+
+			{
+				var temp = trueFirstVertex;
+				trueFirstVertex = trueSecondVertex;
+				trueSecondVertex = temp;
+			}
+
+			{
+				var temp = cachedFirstVertex;
+				cachedFirstVertex = cachedSecondVertex;
+				cachedSecondVertex = temp;
+			}
+
+			{
+				var temp = cachedFirstEdge;
+				cachedFirstEdge = cachedSecondEdge;
+				cachedSecondEdge = temp;
+			}
 		}
 
 		public IReadOnlyCollection<IEdge<T>> GetEdges()
 		{
-			return edgeList.AsReadOnly();
+			return edgeList.ToList().AsReadOnly();
 		}
 
-		private void SetFirstVertex(T vertex)
+		public void SetFirstVertex(T vertex)
 		{
-			throw new NotImplementedException();
+			cachedFirstVertex = vertex;
 		}
 
-		private void SetSecondVertex(T vertex)
+		public void SetSecondVertex(T vertex)
 		{
-			throw new NotImplementedException();
+			cachedSecondVertex = vertex;
 		}
 
-		private void PushFirst(IEdge<T> edge)
+		public void PushFirst(IEdge<T> edge)
 		{
-			throw new NotImplementedException();
+			edgeList.AddFirst(edge);
+
+			var otherVertex = edge.Source.Equals(anchor) ? edge.Target : edge.Source;
+
+			cachedFirstVertex = otherVertex;
+			trueFirstVertex = otherVertex;
+
+			cachedFirstEdge = edge;
 		}
 
-		private void PushSecond(IEdge<T> edge)
+		public void PushSecond(IEdge<T> edge)
 		{
-			throw new NotImplementedException();
+			edgeList.AddLast(edge);
+
+			var otherVertex = edge.Source.Equals(anchor) ? edge.Target : edge.Source;
+
+			cachedSecondVertex = otherVertex;
+			trueSecondVertex = otherVertex;
+
+			cachedSecondEdge = edge;
+		}
+
+		public override string ToString()
+		{
+			var s =
+				$"Anchor {Anchor}, First {trueFirstVertex} {cachedFirstVertex}, Second {trueSecondVertex} {cachedSecondVertex}, ";
+
+			if (edgeList != null)
+			{
+				foreach (var edge in edgeList)
+				{
+					s += $"{edge} ";
+				}
+			}
+			else
+			{
+				s += "no edges";
+			}
+
+			return s;
 		}
 	}
 }
