@@ -47,5 +47,10 @@
 				return (EqualityComparer<T>.Default.GetHashCode(Source) * 397) ^ EqualityComparer<T>.Default.GetHashCode(Target);
 			}
 		}
+
+		public override string ToString()
+		{
+			return $"({Source},{Target})";
+		}
 	}
 }

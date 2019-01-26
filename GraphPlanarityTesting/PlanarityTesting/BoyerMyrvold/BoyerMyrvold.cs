@@ -2,6 +2,7 @@
 {
 	using System;
 	using System.Collections.Generic;
+	using System.Linq;
 	using Graphs.Algorithms;
 	using Graphs.DataStructures;
 
@@ -39,6 +40,16 @@
 
 		private Dictionary<int, LinkedListNode<int>> separatedNodeInParentList;
 
+		private List<IEdge<int>> selfLoops;
+
+		private Dictionary<int, List<IEdge<int>>> backedges;
+
+		private Dictionary<int, int> backedgeFlag;
+
+		private Dictionary<int, int> visited;
+
+		private IGraph<int> graph;
+
 		public bool IsPlanar(IGraph<int> graph)
 		{
 			dfsNumberMap = new Dictionary<int, int>();
@@ -52,10 +63,22 @@
 			separatedDFSChildListMap = new Dictionary<int, LinkedList<int>>();
 			separatedNodeInParentList = new Dictionary<int, LinkedListNode<int>>();
 			canonicalDFSChildMap = new Dictionary<int, int>();
+			selfLoops = new List<IEdge<int>>();
+			backedges = new Dictionary<int, List<IEdge<int>>>();
+			backedgeFlag = new Dictionary<int, int>();
+			visited = new Dictionary<int, int>();
+			this.graph = graph;
 
 			var visitor = new DFSTraversalVisitor<int>(dfsNumberMap, parentMap, lowPointMap, leastAncestorMap, dfsEdgeMap);
 			var dfsTraversal = new DFSTraversal();
 			dfsTraversal.TraverseRecursive(graph, visitor);
+
+			// Init backedges
+			foreach (var vertex in graph.Vertices)
+			{
+				backedges.Add(vertex, new List<IEdge<int>>());
+				visited[vertex] = Int32.MaxValue; // TODO: not ideal
+			}
 
 			// Sort vertices by dfs number ASC
 			verticesByDFSNumber = BucketSort.Sort(dfsNumberMap, graph.VerticesCount);
@@ -96,9 +119,163 @@
 					separatedNodeInParentList[vertex] = node;
 				}
 			}
+			
+			// TODO: reserve stack
+
+			foreach (var vertex in verticesByDFSNumber.Reverse())
+			{
+				Walkup(vertex);
+			}
+
+			return true;
+		}
+
+		private void Walkup(int vertex)
+		{
+			Console.WriteLine($"Walkup {vertex}");
+
+			foreach (var neighbour in graph.GetNeighbours(vertex))
+			{
+				Walkup(vertex, new Edge<int>(vertex, neighbour));
+			}
+
+			Console.WriteLine($"Walkup end");
+			Console.WriteLine();
+		}
+
+		private void Walkup(int vertex, IEdge<int> edge)
+		{
+			Console.WriteLine($"Edge {edge}");
+
+			var source = edge.Source;
+			var target = edge.Target;
+
+			if (source.Equals(target))
+			{
+				selfLoops.Add(edge);
+				return;
+			}
+
+			var w = vertex.Equals(source) ? target : vertex;
+
+			if (dfsNumberMap[w] < dfsNumberMap[vertex] || edge.Equals(dfsEdgeMap[w]))
+				return;
+
+			Console.WriteLine("Edge not embedded and back edge");
+
+			backedges[w].Add(edge);
+			var timestamp = dfsNumberMap[vertex];
+			backedgeFlag[w] = timestamp;
 
 
-			throw new NotImplementedException();
+			foreach (var faceVertex in IterateFirstSide(w))
+			{
+				Console.WriteLine($"Face vertex {faceVertex}");
+			}
+
+			var leadVertex = w;
+
+			while (true)
+			{
+				var foundRoot = true;
+
+				// TODO: this is slow - should be walked in parallel
+				foreach (var faceVertex in IterateFirstSide(leadVertex, false))
+				{
+					if (visited[faceVertex] == timestamp)
+					{
+						foundRoot = false;
+						break;
+					}
+
+					leadVertex = faceVertex;
+					visited[leadVertex] = timestamp;
+					Console.WriteLine($"Lead vertex {leadVertex}");
+				}
+
+				if (foundRoot)
+				{
+					var dfsChild = canonicalDFSChildMap[leadVertex];
+					var parent = parentMap[dfsChild];
+
+					Console.WriteLine($"Found DFS child {dfsChild}, found parent {parent}");
+
+					if (lowPointMap[dfsChild] < dfsNumberMap[vertex] ||
+					    leastAncestorMap[dfsChild] < dfsNumberMap[vertex]
+					)
+					{
+						pertinentRootsMap[parent].Add(dfsChildHandlesMap[dfsChild]);
+					}
+					else
+					{
+						pertinentRootsMap[parent].Insert(0, dfsChildHandlesMap[dfsChild]);
+					}
+
+					if (parent != vertex && visited[parent] != timestamp)
+					{
+						leadVertex = parent;
+					}
+					else
+						break;
+				}
+				else
+				{
+					break;
+				}
+			}
+		}
+
+		public IEnumerable<int> IterateFirstSide(int vertex, bool visitLead = true)
+		{
+			var face = faceHandlesMap[vertex];
+
+			return IterateFace(face, x => x.FirstVertex, visitLead);
+		}
+
+		public IEnumerable<int> IterateSecondSide(int vertex, bool visitLead = true)
+		{
+			var face = faceHandlesMap[vertex];
+
+			return IterateFace(face, x => x.SecondVertex, visitLead);
+		}
+
+		public IEnumerable<int> IterateFace(FaceHandle<int> face, Func<FaceHandle<int>, int> leadSelector, bool visitLead = true)
+		{
+			var follow = face.Anchor;
+			var lead = leadSelector(face);
+
+			while (true)
+			{
+				// TODO: may be wrong
+				if (visitLead)
+				{
+					yield return lead;
+				}
+				else
+				{
+					yield return follow;
+				}
+				
+				var first = face.FirstVertex;
+				var second = face.SecondVertex;
+
+				if (first.Equals(follow))
+				{
+					follow = lead;
+					lead = second;
+				}
+				else if (second.Equals(follow))
+				{
+					follow = lead;
+					lead = first;
+				}
+				else
+				{
+					yield break;
+				}
+
+				face = faceHandlesMap[lead];
+			}
 		}
 	}
 }
