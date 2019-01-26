@@ -42,7 +42,7 @@
 			//graph.AddEdge(6, 7);
 			//graph.AddEdge(7, 0);
 
-			boyerMyrvold.IsPlanar(graph);
+			boyerMyrvold.IsPlanar(graph, out var embedding);
 		}
 	}
 }

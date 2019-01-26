@@ -54,7 +54,7 @@
 
 		private IGraph<int> graph;
 
-		public bool IsPlanar(IGraph<int> graph)
+		public bool IsPlanar(IGraph<int> graph, out Dictionary<int, List<IEdge<int>>> embedding)
 		{
 			dfsNumberMap = new Dictionary<int, int>();
 			parentMap = new Dictionary<int, int>();
@@ -85,6 +85,7 @@
 				backedges.Add(vertex, new List<IEdge<int>>());
 				visited[vertex] = Int32.MaxValue; // TODO: not ideal
 				backedgeFlag[vertex] = graph.VerticesCount + 1;
+				flipped[vertex] = false;
 			}
 
 			// Sort vertices by dfs number ASC
@@ -135,10 +136,21 @@
 
 				if (!Walkdown(vertex))
 				{
+					embedding = null;
 					return false;
 				}
 
 				Dump();
+			}
+
+			Cleanup();
+			Dump();
+
+			embedding = new Dictionary<int, List<IEdge<int>>>();
+			foreach (var vertex in graph.Vertices)
+			{
+				var faceHandle = faceHandlesMap[vertex];
+				embedding[vertex] = faceHandle?.GetEdges().ToList();
 			}
 
 			return true;
@@ -515,6 +527,61 @@
 			}
 
 			return true;
+		}
+
+		private void Cleanup()
+		{
+			// If the graph isn't biconnected, we'll still have entries
+			// in the separated_dfs_child_list for some vertices. Since
+			// these represent articulation points, we can obtain a
+			// planar embedding no matter what order we embed them in.
+			foreach (var vertex in graph.Vertices)
+			{
+				if (separatedDFSChildListMap[vertex].Count != 0)
+				{
+					foreach (var childVertex in separatedDFSChildListMap[vertex])
+					{
+						dfsChildHandlesMap[childVertex].Flip();
+						faceHandlesMap[vertex].GlueFirstToSecond(dfsChildHandlesMap[childVertex]);
+					}
+				}
+			}
+
+			// Up until this point, we've flipped bicomps lazily by setting
+			// flipped[v] to true if the bicomp rooted at v was flipped (the
+			// lazy aspect of this flip is that all descendents of that vertex
+			// need to have their orientations reversed as well). Now, we
+			// traverse the DFS tree by DFS number and perform the actual
+			// flipping as needed
+			foreach (var vertex in verticesByDFSNumber)
+			{
+				var vertexFlipped = flipped[vertex];
+				var parentFlipped = flipped[parentMap[vertex]];
+
+				if (vertexFlipped && !parentFlipped)
+				{
+					faceHandlesMap[vertex].Flip();
+				}
+				else if (parentFlipped && !vertexFlipped)
+				{
+					faceHandlesMap[vertex].Flip();
+					flipped[vertex] = true;
+				}
+				else
+				{
+					flipped[vertex] = false;
+				}
+			}
+
+			// If there are any self-loops in the graph, they were flagged
+			// during the walkup, and we should add them to the embedding now.
+			// Adding a self loop anywhere in the embedding could never
+			// invalidate the embedding, but they would complicate the traversal
+			// if they were added during the walkup/walkdown.
+			foreach (var edge in selfLoops)
+			{
+				faceHandlesMap[edge.Source].PushSecond(edge);
+			}
 		}
 
 		private void Dump()

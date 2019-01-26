@@ -16,12 +16,14 @@
 		public IEnumerable<T> Vertices => adjacencyLists.Keys;
 
 		/// <inheritdoc />
-		public IEnumerable<IEdge<T>> Edges => GetEdges();
+		public IEnumerable<IEdge<T>> Edges => edges;
 
 		/// <inheritdoc />
 		public int VerticesCount => adjacencyLists.Count;
 
 		private readonly Dictionary<T, List<T>> adjacencyLists = new Dictionary<T, List<T>>();
+
+		private readonly List<IEdge<T>> edges = new List<IEdge<T>>();
 
 		/// <inheritdoc />
 		public void AddVertex(T vertex)
@@ -40,6 +42,8 @@
 
 			if (fromList.Contains(to))
 				throw new ArgumentException("The edge was already added");
+
+			edges.Add(new Edge<T>(from, to));
 
 			fromList.Add(to);
 			toList.Add(from);
@@ -66,6 +70,7 @@
 			return false;
 		}
 
+		// TODO: remove?
 		private IEnumerable<IEdge<T>> GetEdges()
 		{
 			var usedEdges = new HashSet<Tuple<T, T>>();

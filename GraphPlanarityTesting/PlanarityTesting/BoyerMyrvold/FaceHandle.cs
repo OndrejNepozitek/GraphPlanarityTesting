@@ -55,7 +55,15 @@
 
 		public void GlueFirstToSecond(FaceHandle<T> bottom)
 		{
-			edgeList.PrependRange(bottom.edgeList); // TODO: slow
+			if (edgeList == null)
+			{
+				edgeList = new LinkedList<IEdge<T>>(bottom.edgeList);
+			}
+			else
+			{
+				edgeList.PrependRange(bottom.edgeList); // TODO: slow
+			}
+
 			trueFirstVertex = bottom.trueFirstVertex;
 			cachedFirstVertex = bottom.cachedFirstVertex;
 			cachedFirstEdge = bottom.cachedFirstEdge;
@@ -63,7 +71,15 @@
 
 		public void GlueSecondToFirst(FaceHandle<T> bottom)
 		{
-			edgeList.AppendRange(bottom.edgeList); // TODO: slow
+			if (edgeList == null)
+			{
+				edgeList = new LinkedList<IEdge<T>>(bottom.edgeList);
+			}
+			else
+			{
+				edgeList.AppendRange(bottom.edgeList); // TODO: slow
+			}
+
 			trueSecondVertex = bottom.trueSecondVertex;
 			cachedSecondVertex = bottom.cachedSecondVertex;
 			cachedSecondEdge = bottom.cachedSecondEdge;
@@ -94,7 +110,7 @@
 
 		public IReadOnlyCollection<IEdge<T>> GetEdges()
 		{
-			return edgeList.ToList().AsReadOnly();
+			return edgeList?.ToList().AsReadOnly();
 		}
 
 		public void SetFirstVertex(T vertex)
