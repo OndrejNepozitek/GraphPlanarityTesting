@@ -303,8 +303,9 @@
 					var secondSideVertex = NullVertex;
 					var firstTail = currentFaceHandle.Anchor;
 					var secondTail = currentFaceHandle.Anchor;
+					var firstSideVertices = IterateFirstSide(currentFaceHandle);
 
-					foreach (var faceVertex in IterateFirstSide(currentFaceHandle))
+					foreach (var faceVertex in firstSideVertices)
 					{
 						// Console.WriteLine($"First side iteration {faceVertex}, pertinent = {Pertinent(faceVertex, vertex)}, externally active = {ExternallyActive(faceVertex, vertex)}");
 
@@ -371,8 +372,22 @@
 						// between the first_face_itr and the second_face_itr,
 						// this graph isn't planar.
 
-						// TODO:
-						// throw new NotImplementedException();
+						foreach (var faceVertex in IterateFace(firstSideVertex, firstTail))
+						{
+							if (faceVertex == secondSideVertex)
+							{
+								break;
+							}
+
+							// Console.WriteLine($"Kuratowski check {faceVertex}");
+
+							if (Pertinent(faceVertex, vertex))
+							{
+								// Console.WriteLine($"Kuratowski found");
+
+								return false;
+							}
+						}
 
 
 						// Otherwise, the fact that we didn't find a pertinent
@@ -704,6 +719,42 @@
 				}
 
 				face = faceHandlesMap[lead];
+
+				var first = face.FirstVertex;
+				var second = face.SecondVertex;
+
+				if (first.Equals(follow))
+				{
+					follow = lead;
+					lead = second;
+				}
+				else if (second.Equals(follow))
+				{
+					follow = lead;
+					lead = first;
+				}
+				else
+				{
+					yield break;
+				}
+			}
+		}
+
+		public IEnumerable<int> IterateFace(int lead, int follow, bool visitLead = true)
+		{
+			while (true)
+			{
+				// TODO: may be wrong
+				if (visitLead)
+				{
+					yield return lead;
+				}
+				else
+				{
+					yield return follow;
+				}
+
+				var face = faceHandlesMap[lead];
 
 				var first = face.FirstVertex;
 				var second = face.SecondVertex;

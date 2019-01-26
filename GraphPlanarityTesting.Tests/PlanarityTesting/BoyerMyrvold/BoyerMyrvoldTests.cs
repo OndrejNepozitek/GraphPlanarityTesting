@@ -93,9 +93,32 @@
 		}
 
 		[Test]
+		public void Test5()
+		{
+			var boyerMyrvold = new BoyerMyrvold();
+			var graph = new UndirectedAdjacencyListGraph<int>();
+			var verticesCount = 10;
+
+			for (int i = 0; i < verticesCount; i++)
+			{
+				graph.AddVertex(i);
+			}
+
+			for (int i = 0; i < verticesCount - 1; i++)
+			{
+				for (int j = i + 1; j < verticesCount; j++)
+				{
+					graph.AddEdge(i, j);
+				}
+			}
+
+			boyerMyrvold.IsPlanar(graph, out var embedding);
+		}
+
+		[Test]
 		public void Test2()
 		{
-			var verticesCount = 6;
+			var verticesCount = 7;
 			var graphs = new List<List<IEdge<int>>>();
 			graphs.Add(new List<IEdge<int>>());
 
