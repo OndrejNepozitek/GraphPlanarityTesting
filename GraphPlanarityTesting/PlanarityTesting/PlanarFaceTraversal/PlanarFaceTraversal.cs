@@ -1,11 +1,12 @@
 ﻿namespace GraphPlanarityTesting.PlanarityTesting.PlanarFaceTraversal
 {
 	using System.Collections.Generic;
+	using BoyerMyrvold;
 	using Graphs.DataStructures;
 
 	public class PlanarFaceTraversal
 	{
-		public void Traverse<T>(IGraph<T> graph, Dictionary<T, List<IEdge<T>>> embedding, IPlanarFaceTraversalVisitor<T> visitor)
+		public void Traverse<T>(IGraph<T> graph, PlanarEmbedding<T> embedding, IPlanarFaceTraversalVisitor<T> visitor)
 		{
 			var nextEdge = new Dictionary<IEdge<T>, Dictionary<T, IEdge<T>>>();
 			var visited = new Dictionary<IEdge<T>, HashSet<T>>();
@@ -20,15 +21,12 @@
 
 			foreach (var vertex in graph.Vertices)
 			{
-				if (embedding[vertex] == null)
-				{
-					continue;
-				}
+				var vertexEmbedding = embedding.GetEdgesAroundVertex(vertex);
 
-				for (var i = 0; i < embedding[vertex].Count; i++)
+				for (var i = 0; i < vertexEmbedding.Count; i++)
 				{
-					var edge = embedding[vertex][i];
-					var followingEdge = i != embedding[vertex].Count - 1 ? embedding[vertex][i + 1] : embedding[vertex][0];
+					var edge = vertexEmbedding[i];
+					var followingEdge = i != vertexEmbedding.Count - 1 ? vertexEmbedding[i + 1] : vertexEmbedding[0];
 
 					if (nextEdge.ContainsKey(edge))
 					{

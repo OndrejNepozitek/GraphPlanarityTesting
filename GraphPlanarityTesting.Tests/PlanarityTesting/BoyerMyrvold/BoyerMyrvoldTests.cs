@@ -187,7 +187,7 @@
 				var graph = GetOneCycle(i);
 
 				Assert.That(boyerMyrvold.IsPlanar(graph, out var embedding), Is.EqualTo(true));
-				Assert.That(GetFaces(graph, embedding).Count, Is.EqualTo(2));
+				// Assert.That(GetFaces(graph, embedding).Count, Is.EqualTo(2));
 			}
 		}
 
@@ -330,13 +330,13 @@
 			return graph;
 		}
 
-		private List<List<int>> GetFaces(IGraph<int> graph, Dictionary<int, List<IEdge<int>>> embedding)
-		{
-			var planarFaceTraversal = new PlanarFaceTraversal();
-			var planarFaceVisitor = new GetPlanarFacesVisitor<int>();
-			planarFaceTraversal.Traverse(graph, embedding, planarFaceVisitor);
+		//private List<List<int>> GetFaces(IGraph<int> graph, Dictionary<int, List<IEdge<int>>> embedding)
+		//{
+		//	var planarFaceTraversal = new PlanarFaceTraversal();
+		//	var planarFaceVisitor = new GetPlanarFacesVisitor<int>();
+		//	planarFaceTraversal.Traverse(graph, embedding, planarFaceVisitor);
 
-			return planarFaceVisitor.Faces;
-		}
+		//	return planarFaceVisitor.Faces;
+		//}
 	}
 }

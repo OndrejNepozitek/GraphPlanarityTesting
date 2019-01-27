@@ -45,11 +45,9 @@
 					{
 						Assert.That(testData.IsPlanar, Is.EqualTo(true));
 
-						foreach (var pair in embedding)
+						foreach (var vertex in graph.Vertices)
 						{
-							var vertex = pair.Key;
-							var vertexEmbedding = pair.Value ?? new List<IEdge<int>>();
-
+							var vertexEmbedding = embedding.GetEdgesAroundVertex(vertex);
 							Assert.That(vertexEmbedding, Is.EquivalentTo(testData.Embedding[vertex]));
 						}
 

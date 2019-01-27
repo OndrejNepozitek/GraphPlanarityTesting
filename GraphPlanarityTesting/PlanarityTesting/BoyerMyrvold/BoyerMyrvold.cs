@@ -5,7 +5,13 @@
 	using System.Linq;
 	using Graphs.Algorithms;
 	using Graphs.DataStructures;
+	using PlanarFaceTraversal;
 
+	/// <summary>
+	/// Implementation of the Boyer-Myrvol algorithm.
+	/// Inspired by implementation in the Boost library.
+	/// </summary>
+	/// <typeparam name="T">Vertex type.</typeparam>
 	public class BoyerMyrvold<T>
 	{
 		private IGraph<Vertex<T>> transformedGraph;
@@ -20,8 +26,136 @@
 
 		private Stack<MergeInfo> mergeStackNew;
 
+		#region Public API
 
-		public bool IsPlanar(IGraph<T> graph, out Dictionary<T, List<IEdge<T>>> embedding)
+		/// <summary>
+		/// Tries to get faces of a planar embedding of a given graph.
+		/// </summary>
+		/// <param name="graph">Graph</param>
+		/// <param name="faces">Planar faces</param>
+		/// <returns>True if planar, otherwise false</returns>
+		public bool TryGetPlanarFaces(IGraph<T> graph, out PlanarFaces<T> faces)
+		{
+			if (!IsPlanar(graph, out var embedding))
+			{
+				faces = null;
+				return false;
+			}
+
+			var planarFaceTraversal = new PlanarFaceTraversal();
+			var planarFaceVisitor = new GetPlanarFacesVisitor<T>();
+			planarFaceTraversal.Traverse(graph, embedding, planarFaceVisitor);
+
+			faces = new PlanarFaces<T>(planarFaceVisitor.Faces);
+			return true;
+		}
+
+		/// <summary>
+		/// Checks if a given graph is planar
+		/// </summary>
+		/// <param name="graph"></param>
+		/// <returns></returns>
+		public bool IsPlanar(IGraph<T> graph)
+		{
+			return IsPlanar(graph, out var _);
+		}
+
+		/// <summary>
+		/// Checks if a given graph is planar and provides a planar embedding if so.
+		/// </summary>
+		/// <param name="graph"></param>
+		/// <param name="embedding"></param>
+		/// <returns></returns>
+		public bool IsPlanar(IGraph<T> graph, out PlanarEmbedding<T> embedding)
+		{
+			// Transforms input graph
+			TransformGraph(graph);
+
+			// Init helper collections
+			selfLoopsNew = new List<IEdge<Vertex<T>>>();
+			mergeStackNew = new Stack<MergeInfo>();
+
+			// Use DFS traversal to add basic information to each of the vertices
+			var visitorNew = new DFSTraversalVisitor<T>();
+			var dfsTraversalNew = new DFSTraversal();
+			dfsTraversalNew.TraverseRecursive(transformedGraph, visitorNew);
+
+			// Sort vertices by dfs number ASC
+			verticesByDFSNumberNew = BucketSort.Sort(transformedGraph.Vertices, x => x.DFSNumber, transformedGraph.VerticesCount);
+
+			// Sort vertices by low point ASC
+			verticesByLowPointNew = BucketSort.Sort(transformedGraph.Vertices, x => x.LowPoint, transformedGraph.VerticesCount);
+
+			// Init vertex fields
+			foreach (var vertex in transformedGraph.Vertices)
+			{
+				vertex.BackEdges = new List<IEdge<Vertex<T>>>();
+				vertex.Visited = int.MaxValue;
+				vertex.BackedgeFlag = transformedGraph.VerticesCount + 1;
+				vertex.Flipped = false;
+
+				var dfsParent = vertex.Parent;
+
+				if (vertex != dfsParent)
+				{
+					var parentEdge = vertex.DFSEdge;
+					vertex.FaceHandle = new FaceHandle<Vertex<T>>(vertex, parentEdge);
+					vertex.DFSChildHandle = new FaceHandle<Vertex<T>>(dfsParent, parentEdge);
+				}
+				else
+				{
+					vertex.FaceHandle = new FaceHandle<Vertex<T>>(vertex, (Vertex<T>)null); // TODO: change
+					vertex.DFSChildHandle = new FaceHandle<Vertex<T>>(dfsParent, (Vertex<T>)null);
+				}
+
+				vertex.CanonicalDFSChild = vertex;
+				vertex.PertinentRoots = new LinkedList<FaceHandle<Vertex<T>>>();
+				vertex.SeparatedDFSChildList = new LinkedList<Vertex<T>>();
+			}
+
+			// Init separated dfs child lists
+			//
+			// Original Boost comment:
+			// We need to create a list of not-yet-merged depth-first children for
+			// each vertex that will be updated as bicomps get merged. We sort each
+			// list by ascending lowpoint, which allows the externally_active
+			// function to run in constant time, and we keep a pointer to each
+			// vertex's representation in its parent's list, which allows merging
+			//in constant time.
+			foreach (var vertex in verticesByLowPointNew)
+			{
+				var dfsParent = vertex.Parent;
+
+				if (vertex != dfsParent)
+				{
+					var node = dfsParent.SeparatedDFSChildList.AddLast(vertex);
+					vertex.SeparatedNodeInParentList = node;
+				}
+			}
+
+			// Call the main algorithm
+			var isPlanar = IsPlanar();
+
+			if (!isPlanar)
+			{
+				embedding = null;
+				return false;
+			}
+
+			embedding = GetPlanarEmbedding();
+			return true;
+		}
+
+		#endregion
+
+		#region Helper methods
+
+		/// <summary>
+		/// Transforms a given graph to a representation that is useful for the algorithm.
+		/// It enhances all vertices with additional information.
+		/// </summary>
+		/// <param name="graph"></param>
+		private void TransformGraph(IGraph<T> graph)
 		{
 			transformedGraph = new UndirectedAdjacencyListGraph<Vertex<T>>();
 
@@ -40,74 +174,45 @@
 				var target = originalVertexMapping[edge.Target];
 				transformedGraph.AddEdge(source, target);
 			}
-
-			var isPlanar = IsPlanar(out var embeddingOld);
-			embedding = embeddingOld;
-
-			return isPlanar;
 		}
 
-		private bool IsPlanar(out Dictionary<T, List<IEdge<T>>> embedding)
+		/// <summary>
+		/// Constructs a planar embedding from individual face handles.
+		/// </summary>
+		/// <returns></returns>
+		private PlanarEmbedding<T> GetPlanarEmbedding()
 		{
-
-			selfLoopsNew = new List<IEdge<Vertex<T>>>();
-			mergeStackNew = new Stack<MergeInfo>();
-
-			var visitorNew = new DFSTraversalVisitor<T>();
-			var dfsTraversalNew = new DFSTraversal();
-			dfsTraversalNew.TraverseRecursive(transformedGraph, visitorNew);
-
-
-			// Init backedges
+			var embedding = new Dictionary<T, List<IEdge<T>>>();
 			foreach (var vertex in transformedGraph.Vertices)
 			{
-				vertex.BackEdges = new List<IEdge<Vertex<T>>>();
-				vertex.Visited = int.MaxValue;
-				vertex.BackedgeFlag = transformedGraph.VerticesCount + 1;
-				vertex.Flipped = false;
+				var faceHandle = vertex.FaceHandle;
+				embedding[vertex.Value] = faceHandle.GetEdges()?.Select(x => new Edge<T>(x.Source.Value, x.Target.Value)).Cast<IEdge<T>>().ToList();
 			}
 
-			//// Sort vertices by dfs number ASC
-			verticesByDFSNumberNew = BucketSort.Sort(transformedGraph.Vertices, x => x.DFSNumber, transformedGraph.VerticesCount);
+			return new PlanarEmbedding<T>(embedding);
+		}
 
-			// Sort vertices by low point ASC
-			verticesByLowPointNew = BucketSort.Sort(transformedGraph.Vertices, x => x.LowPoint, transformedGraph.VerticesCount);
+		#endregion
 
-			foreach (var vertex in transformedGraph.Vertices)
-			{
-				var dfsParent = vertex.Parent;
+		#region Boyer Myrvold algorithm
 
-				if (vertex != dfsParent)
-				{
-					var parentEdge = vertex.DFSEdge;
-					vertex.FaceHandle = new FaceHandle<Vertex<T>>(vertex, parentEdge);
-					vertex.DFSChildHandle = new FaceHandle<Vertex<T>>(dfsParent, parentEdge);
-				}
-				else
-				{
-					vertex.FaceHandle = new FaceHandle<Vertex<T>>(vertex, (Vertex<T>) null); // TODO: change
-					vertex.DFSChildHandle = new FaceHandle<Vertex<T>>(dfsParent, (Vertex<T>) null);
-				}
-
-				vertex.CanonicalDFSChild = vertex;
-				vertex.PertinentRoots = new LinkedList<FaceHandle<Vertex<T>>>();
-				vertex.SeparatedDFSChildList = new LinkedList<Vertex<T>>();
-			}
-
-
-			foreach (var vertex in verticesByLowPointNew)
-			{
-				var dfsParent = vertex.Parent;
-
-				if (vertex != dfsParent)
-				{
-					var node = dfsParent.SeparatedDFSChildList.AddLast(vertex);
-					vertex.SeparatedNodeInParentList = node;
-				}
-			}
-
-
-			// TODO: reserve stack
+		/// <summary>
+		/// The main entry point of the algorithm.
+		/// </summary>
+		/// <returns></returns>
+		private bool IsPlanar()
+		{
+			// Original Boost comment:
+			// This is the main algorithm: starting with a DFS tree of embedded
+			// edges (which, since it's a tree, is planar), iterate through all
+			// vertices by reverse DFS number, attempting to embed all backedges
+			// connecting the current vertex to vertices with higher DFS numbers.
+			//
+			// The walkup is a procedure that examines all such backedges and sets
+			// up the required data structures so that they can be searched by the
+			// walkdown in linear time. The walkdown does the actual work of
+			// embedding edges and flipping bicomps, and can identify when it has
+			// come across a kuratowski subgraph.
 
 			foreach (var vertex in verticesByDFSNumberNew.Reverse())
 			{
@@ -115,45 +220,32 @@
 
 				if (!Walkdown(vertex))
 				{
-					embedding = null;
 					return false;
 				}
-
-				// Dump();
 			}
 
 			Cleanup();
-			Dump();
-
-			embedding = new Dictionary<T, List<IEdge<T>>>();
-			foreach (var vertex in transformedGraph.Vertices)
-			{
-				var faceHandle = vertex.FaceHandle;
-				embedding[vertex.Value] = faceHandle.GetEdges()?.Select(x => (IEdge < T >)  new Edge<T>(x.Source.Value, x.Target.Value)).ToList(); // TODO: change
-			}
 
 			return true;
 		}
 
 		private void Walkup(Vertex<T> vertex)
 		{
-			// Console.WriteLine($"Walkup {vertex}");
+			// Original Boost comment:
+			// The point of the walkup is to follow all backedges from v to
+			// vertices with higher DFS numbers, and update pertinent_roots
+			// for the bicomp roots on the path from backedge endpoints up
+			// to v. This will set the stage for the walkdown to efficiently
+			// traverse the graph of bicomps down from v.
 
 			foreach (var neighbour in transformedGraph.GetNeighbours(vertex))
 			{
 				Walkup(vertex, new Edge<Vertex<T>>(vertex, neighbour));
 			}
-
-			// Console.WriteLine($"Walkup end");
-			// Console.WriteLine();
 		}
-
-	
 
 		private void Walkup(Vertex<T> vertex, IEdge<Vertex<T>> edge)
 		{
-			// Console.WriteLine($"Edge {edge}");
-
 			var source = edge.Source;
 			var target = edge.Target;
 
@@ -168,16 +260,9 @@
 			if (w.DFSNumber < vertex.DFSNumber || edge.Equals(w.DFSEdge))
 				return;
 
-			// Console.WriteLine("Edge not embedded and back edge");
-
 			w.BackEdges.Add(edge);
 			var timestamp = vertex.DFSNumber;
 			w.BackedgeFlag = timestamp;
-
-			foreach (var faceVertex in IterateFirstSide(w))
-			{
-				// Console.WriteLine($"Face vertex {faceVertex}");
-			}
 
 			var leadVertex = w;
 
@@ -185,19 +270,8 @@
 			{
 				var foundRoot = true;
 
-				// TODO: this is slow - should be walked in parallel
-				//foreach (var faceVertex in IterateFirstSide(leadVertex, false))
-				//{
-				//	if (visited[faceVertex] == timestamp)
-				//	{
-				//		foundRoot = false;
-				//		break;
-				//	}
-
-				//	leadVertex = faceVertex;
-				//	visited[leadVertex] = timestamp;
-				//	// Console.WriteLine($"Lead vertex {leadVertex}");
-				//}
+				// Move to the root of the current bicomp or the first visited
+				// vertex on the bicomp by going up each side in parallel
 				foreach (var faceVertex in IterateBothSides(leadVertex))
 				{
 					if (faceVertex.Visited == timestamp)
@@ -208,25 +282,16 @@
 
 					leadVertex = faceVertex;
 					leadVertex.Visited = timestamp;
-					// Console.WriteLine($"Lead vertex {leadVertex}");
 				}
 
+				// If we've found the root of a bicomp through a path we haven't
+				// seen before, update pertinent_roots with a handle to the
+				// current bicomp. Otherwise, we've just seen a path we've been
+				// up before, so break out of the main while loop.
 				if (foundRoot)
 				{
 					var dfsChild = leadVertex.CanonicalDFSChild;
 					var parent = dfsChild.Parent;
-
-					// TODO: different than in Boost
-					// Probably due to the fact that we don't traverse both side of the face in parallel,
-					// it happened that the same dfsChild was added twice.
-					// This check ensures
-					if ((parent.PertinentRoots.Last != null && parent.PertinentRoots.Last.Value == dfsChild.DFSChildHandle)
-						|| (parent.PertinentRoots.First != null && parent.PertinentRoots.First.Value == dfsChild.DFSChildHandle))
-					{
-						throw new InvalidOperationException("Must not happen!");
-					}
-
-					// Console.WriteLine($"Found DFS child {dfsChild}, found parent {parent}");
 
 					dfsChild.DFSChildHandle.FirstVertex.Visited = timestamp;
 					dfsChild.DFSChildHandle.SecondVertex.Visited = timestamp;
@@ -258,9 +323,14 @@
 
 		public bool Walkdown(Vertex<T> vertex)
 		{
-			// Console.WriteLine($"Walkdown {vertex}");
-
-			Vertex<T> w;
+			// Original Boost comment:
+			// This procedure is where all of the action is - pertinent_roots
+			// has already been set up by the walkup, so we just need to move
+			// down bicomps from v until we find vertices that have been
+			// labeled as backedge endpoints. Once we find such a vertex, we
+			// embed the corresponding edge and glue together the bicomps on
+			// the path connecting the two vertices in the edge. This may
+			// involve flipping bicomps along the way.
 
 			mergeStackNew.Clear();
 
@@ -269,8 +339,6 @@
 				var rootFaceHandle = vertex.PertinentRoots.First.Value;
 				vertex.PertinentRoots.RemoveFirst();
 				var currentFaceHandle = rootFaceHandle;
-
-				// Console.WriteLine($"Pertinent root anchor {rootFaceHandle.Anchor}");
 
 				while (true)
 				{
@@ -282,12 +350,8 @@
 
 					foreach (var faceVertex in firstSideVertices)
 					{
-						// Console.WriteLine($"First side iteration {faceVertex}, pertinent = {Pertinent(faceVertex, vertex)}, externally active = {ExternallyActive(faceVertex, vertex)}");
-
 						if (Pertinent(faceVertex, vertex) || ExternallyActive(faceVertex, vertex))
 						{
-							// Console.WriteLine($"First side iteration pertinent or externally active");
-
 							firstSideVertex = faceVertex;
 							secondSideVertex = faceVertex;
 							break;
@@ -298,24 +362,18 @@
 
 					if (firstSideVertex == null || firstSideVertex == currentFaceHandle.Anchor)
 					{
-						// Console.WriteLine($"Break");
 						break;
 					}
 
 					foreach (var faceVertex in IterateSecondSide(currentFaceHandle))
 					{
-						// Console.WriteLine($"Second side iteration {faceVertex}, pertinent = {Pertinent(faceVertex, vertex)}, externally active = {ExternallyActive(faceVertex, vertex)}");
-
 						if (Pertinent(faceVertex, vertex) || ExternallyActive(faceVertex, vertex))
 						{
-							// Console.WriteLine($"Second side iteration pertinent or externally active");
-
 							secondSideVertex = faceVertex;
 							break;
 						}
 
 						secondTail = faceVertex;
-						// Console.WriteLine($"Second tail {faceVertex}");
 					}
 
 					Vertex<T> chosen = null;
@@ -346,7 +404,6 @@
 						// If there's a pertinent vertex on the lower face
 						// between the first_face_itr and the second_face_itr,
 						// this graph isn't planar.
-
 						foreach (var faceVertex in IterateFace(firstSideVertex, firstTail))
 						{
 							if (faceVertex == secondSideVertex)
@@ -354,12 +411,8 @@
 								break;
 							}
 
-							// Console.WriteLine($"Kuratowski check {faceVertex}");
-
 							if (Pertinent(faceVertex, vertex))
 							{
-								// Console.WriteLine($"Kuratowski found");
-
 								return false;
 							}
 						}
@@ -369,7 +422,6 @@
 						// vertex on this face is fine - we should set the
 						// short-circuit edges and break out of this loop to
 						// start looking at a different pertinent root.
-
 						if (firstSideVertex == secondSideVertex)
 						{
 							if (firstTail != vertex)
@@ -404,58 +456,46 @@
 
 						if (firstSideVertex.FaceHandle.FirstVertex == firstTail)
 						{
-							// Console.WriteLine("Case aa");
 							firstSideVertex.FaceHandle.SetFirstVertex(vertex);
 						}
 						else
 						{
-							// Console.WriteLine("Case ab");
 							firstSideVertex.FaceHandle.SetSecondVertex(vertex);
 						}
 
 						if (secondSideVertex.FaceHandle.FirstVertex == secondTail)
 						{
-							// Console.WriteLine("Case ba");
 							secondSideVertex.FaceHandle.SetFirstVertex(vertex);
 						}
 						else
 						{
-							// Console.WriteLine("Case bb");
 							secondSideVertex.FaceHandle.SetSecondVertex(vertex);
 						}
 
 						break;
 					}
 
-					// Console.WriteLine($"Chosen {chosen}");
-
 					// When we unwind the stack, we need to know which direction
 					// we came down from on the top face handle
-
 					var choseFirstLowerPath = (choseFirstUpperPath && chosen.FaceHandle.FirstVertex == firstTail)
 											  || (!choseFirstUpperPath && chosen.FaceHandle.FirstVertex == secondTail);
 
 					//If there's a backedge at the chosen vertex, embed it now
-
+					Vertex<T> w;
 					if (chosen.BackedgeFlag == vertex.DFSNumber)
 					{
 						w = chosen;
 
-						chosen.BackedgeFlag = transformedGraph.VerticesCount + 1; // TODO: check if consistent
-																		   // add_to_merge_points(chosen, StoreOldHandlesPolicy());
+						chosen.BackedgeFlag = transformedGraph.VerticesCount + 1;
 
 						foreach (var edge in chosen.BackEdges)
 						{
-							// add_to_embedded_edges(e, StoreOldHandlesPolicy());
-
 							if (choseFirstLowerPath)
 							{
-								// Console.WriteLine($"Push first {edge}");
 								chosen.FaceHandle.PushFirst(edge);
 							}
 							else
 							{
-								// Console.WriteLine($"Push second {edge}");
 								chosen.FaceHandle.PushSecond(edge);
 							}
 						}
@@ -468,20 +508,16 @@
 					}
 
 					//Unwind the merge stack to the root, merging all bicomps
-					var bottomPathFollowsFirst = false;
-					var topPathFollowsFirst = false;
 					var nextBottomFollowsFirst = choseFirstUpperPath;
-
-					var mergePoint = chosen;
 
 					while (mergeStackNew.Count != 0)
 					{
-						bottomPathFollowsFirst = nextBottomFollowsFirst;
+						var bottomPathFollowsFirst = nextBottomFollowsFirst;
 						var mergeInfo = mergeStackNew.Pop();
 
-						mergePoint = mergeInfo.Vertex;
+						var mergePoint = mergeInfo.Vertex;
 						nextBottomFollowsFirst = mergeInfo.ChoseFirstUpperPath;
-						topPathFollowsFirst = mergeInfo.ChoseFirstLowerPath;
+						var topPathFollowsFirst = mergeInfo.ChoseFirstLowerPath;
 
 						var topHandle = mergePoint.FaceHandle;
 						var bottomHandle = mergePoint.PertinentRoots.First.Value;
@@ -491,52 +527,39 @@
 
 						mergePoint.PertinentRoots.RemoveFirst();
 
-						// add_to_merge_points(top_handle.get_anchor(), StoreOldHandlesPolicy());
-
 						if (topPathFollowsFirst && bottomPathFollowsFirst)
 						{
-							// Console.WriteLine("Case 1");
 							bottomHandle.Flip();
 							topHandle.GlueFirstToSecond(bottomHandle);
 						}
 						else if (!topPathFollowsFirst && bottomPathFollowsFirst)
 						{
-							// Console.WriteLine("Case 2");
 							bottomDFSChild.Flipped = true;
 							topHandle.GlueSecondToFirst(bottomHandle);
 						}
 						else if (topPathFollowsFirst && !bottomPathFollowsFirst)
 						{
-							// Console.WriteLine("Case 3");
 							bottomDFSChild.Flipped = true;
 							topHandle.GlueFirstToSecond(bottomHandle);
 						}
 						else //!top_path_follows_first && !bottom_path_follows_first
 						{
-							// Console.WriteLine("Case 4");
 							bottomHandle.Flip();
 							topHandle.GlueSecondToFirst(bottomHandle);
 						}
 					}
 
 					//Finally, embed all edges (v,w) at their upper end points
-
 					w.CanonicalDFSChild = rootFaceHandle.FirstVertex.CanonicalDFSChild;
-
-					//add_to_merge_points(root_face_handle.get_anchor(),
-					//	StoreOldHandlesPolicy()
-					//);
 
 					foreach (var edge in chosen.BackEdges)
 					{
 						if (nextBottomFollowsFirst)
 						{
-							// Console.WriteLine($"- Push first {edge}");
 							rootFaceHandle.PushFirst(edge);
 						}
 						else
 						{
-							// Console.WriteLine($"- Push second {edge}");
 							rootFaceHandle.PushSecond(edge);
 						}
 					}
@@ -604,27 +627,10 @@
 			}
 		}
 
-		private void Dump()
-		{
-			// Console.WriteLine();
-			// Console.WriteLine("-- DUMP START --");
-
-			foreach (var vertex in transformedGraph.Vertices)
-			{
-				var faceHandle = vertex.FaceHandle;
-				// Console.WriteLine($"{vertex.Value} - {faceHandle}");
-			}
-
-			// Console.WriteLine("-- DUMP END --");
-			// Console.WriteLine();
-		}
-
-
 		private bool Pertinent(Vertex<T> vertex, Vertex<T> otherVertex)
 		{
 			// w is pertinent with respect to v if there is a backedge (v,w) or if
 			// w is the root of a bicomp that contains a pertinent vertex.
-
 			return vertex.BackedgeFlag == otherVertex.DFSNumber || vertex.PertinentRoots.Count != 0;
 		}
 
@@ -633,7 +639,6 @@
 			// Let a be any proper depth-first search ancestor of v. w is externally
 			// active with respect to v if there exists a backedge (a,w) or a
 			// backedge (a,w_0) for some w_0 in a descendent bicomp of w.
-
 			var otherVertexDFSNumber = otherVertex.DFSNumber;
 
 			return vertex.LeastAncestor < otherVertexDFSNumber
@@ -641,12 +646,10 @@
 			           vertex.SeparatedDFSChildList.First.Value.LowPoint < otherVertexDFSNumber);
 		}
 
-
 		private bool InternallyActive(Vertex<T> vertex, Vertex<T> otherVertex)
 		{
 			return Pertinent(vertex, otherVertex) && !ExternallyActive(vertex, otherVertex);
 		}
-
 
 		private void RemoveVertexFromSeparatedDFSChildList(Vertex<T> vertex)
 		{
@@ -655,8 +658,6 @@
 
 			list.Remove(toDelete);
 		}
-
-
 
 		private class MergeInfo
 		{
@@ -674,57 +675,140 @@
 			}
 		}
 
-		public IEnumerable<Vertex<T>> IterateFirstSide(Vertex<T> vertex, bool visitLead = true)
+		#region Face iteratos
+
+		/// <summary>
+		/// Starts with the "first" vertex of a face handle of a given vertex.
+		/// Stops after a root is find.
+		/// </summary>
+		/// <param name="vertex"></param>
+		/// <param name="returnCurrent">
+		/// There are always 2 possible edges to follow from each vertex. So we have to
+		/// keep track from which vertex did we come to the current vertex.
+		/// 
+		/// The returnCurrent argument determines which of the two vertices is returned.
+		/// true - returns the current vertex
+		/// false - returns the previous vertex
+		/// </param>
+		/// <returns></returns>
+		private IEnumerable<Vertex<T>> IterateFirstSide(Vertex<T> vertex, bool returnCurrent = true)
 		{
-			return IterateFace(vertex.FaceHandle, x => x.FirstVertex, visitLead);
+			return IterateFace(vertex.FaceHandle, x => x.FirstVertex, returnCurrent);
 		}
 
-		public IEnumerable<Vertex<T>> IterateFirstSide(FaceHandle<Vertex<T>> face, bool visitLead = true)
+		/// <summary>
+		/// Starts with the "first" vertex of a given face handle.
+		/// Stops after a root is find.
+		/// </summary>
+		/// <param name="face"></param>
+		/// <param name="returnCurrent">
+		/// There are always 2 possible edges to follow from each vertex. So we have to
+		/// keep track from which vertex did we come to the current vertex.
+		/// 
+		/// The returnCurrent argument determines which of the two vertices is returned.
+		/// true - returns the current vertex
+		/// false - returns the previous vertex
+		/// </param>
+		/// <returns></returns>
+		private IEnumerable<Vertex<T>> IterateFirstSide(FaceHandle<Vertex<T>> face, bool returnCurrent = true)
 		{
-			return IterateFace(face, x => x.FirstVertex, visitLead);
+			return IterateFace(face, x => x.FirstVertex, returnCurrent);
 		}
 
-		public IEnumerable<Vertex<T>> IterateSecondSide(Vertex<T> vertex, bool visitLead = true)
+		/// <summary>
+		/// Starts with the "second" vertex of a face handle of a given vertex.
+		/// Stops after a root is find.
+		/// </summary>
+		/// <param name="vertex"></param>
+		/// <param name="returnCurrent">
+		/// There are always 2 possible edges to follow from each vertex. So we have to
+		/// keep track from which vertex did we come to the current vertex.
+		/// 
+		/// The returnCurrent argument determines which of the two vertices is returned.
+		/// true - returns the current vertex
+		/// false - returns the previous vertex
+		/// </param>
+		/// <returns></returns>
+		private IEnumerable<Vertex<T>> IterateSecondSide(Vertex<T> vertex, bool returnCurrent = true)
 		{
-			return IterateFace(vertex.FaceHandle, x => x.SecondVertex, visitLead);
+			return IterateFace(vertex.FaceHandle, x => x.SecondVertex, returnCurrent);
 		}
 
-		public IEnumerable<Vertex<T>> IterateSecondSide(FaceHandle<Vertex<T>> face, bool visitLead = true)
+		/// <summary>
+		/// Starts with the "second" vertex of a given face handle.
+		/// Stops after a root is find.
+		/// </summary>
+		/// <param name="face"></param>
+		/// <param name="returnCurrent">
+		/// There are always 2 possible edges to follow from each vertex. So we have to
+		/// keep track from which vertex did we come to the current vertex.
+		/// 
+		/// The returnCurrent argument determines which of the two vertices is returned.
+		/// true - returns the current vertex
+		/// false - returns the previous vertex
+		/// </param>
+		/// <returns></returns>
+		private IEnumerable<Vertex<T>> IterateSecondSide(FaceHandle<Vertex<T>> face, bool returnCurrent = true)
 		{
-			return IterateFace(face, x => x.SecondVertex, visitLead);
+			return IterateFace(face, x => x.SecondVertex, returnCurrent);
 		}
 
-		public IEnumerable<Vertex<T>> IterateFace(FaceHandle<Vertex<T>> face, Func<FaceHandle<Vertex<T>>, Vertex<T>> leadSelector, bool visitLead = true)
+		/// <summary>
+		/// Iterates over a given face.
+		/// </summary>
+		/// <param name="face"></param>
+		/// <param name="currentVertexSelector"></param>
+		/// <param name="returnCurrent">
+		/// There are always 2 possible edges to follow from each vertex. So we have to
+		/// keep track from which vertex did we come to the current vertex.
+		/// 
+		/// The returnCurrent argument determines which of the two vertices is returned.
+		/// true - returns the current vertex
+		/// false - returns the previous vertex
+		/// </param>
+		/// <returns></returns>
+		private IEnumerable<Vertex<T>> IterateFace(FaceHandle<Vertex<T>> face, Func<FaceHandle<Vertex<T>>, Vertex<T>> currentVertexSelector, bool returnCurrent = true)
 		{
-			var follow = face.Anchor;
-			var lead = leadSelector(face);
+			var previous = face.Anchor;
+			var current = currentVertexSelector(face);
 
+			return IterateFace(current, previous, returnCurrent);
+		}
+
+		/// <summary>
+		/// Iterates over a given face.
+		/// </summary>
+		/// <param name="current"></param>
+		/// <param name="previous"></param>
+		/// <param name="returnCurrent"></param>
+		/// <returns></returns>
+		private IEnumerable<Vertex<T>> IterateFace(Vertex<T> current, Vertex<T> previous, bool returnCurrent = true)
+		{
 			while (true)
 			{
-				// TODO: may be wrong
-				if (visitLead)
+				if (returnCurrent)
 				{
-					yield return lead;
+					yield return current;
 				}
 				else
 				{
-					yield return follow;
+					yield return previous;
 				}
 
-				face = lead.FaceHandle;
+				var face = current.FaceHandle;
 
 				var first = face.FirstVertex;
 				var second = face.SecondVertex;
 
-				if (first == follow)
+				if (first == previous)
 				{
-					follow = lead;
-					lead = second;
+					previous = current;
+					current = second;
 				}
-				else if (second == follow)
+				else if (second == previous)
 				{
-					follow = lead;
-					lead = first;
+					previous = current;
+					current = first;
 				}
 				else
 				{
@@ -733,43 +817,11 @@
 			}
 		}
 
-		public IEnumerable<Vertex<T>> IterateFace(Vertex<T> lead, Vertex<T> follow, bool visitLead = true)
-		{
-			while (true)
-			{
-				// TODO: may be wrong
-				if (visitLead)
-				{
-					yield return lead;
-				}
-				else
-				{
-					yield return follow;
-				}
-
-				var face = lead.FaceHandle;
-
-				var first = face.FirstVertex;
-				var second = face.SecondVertex;
-
-				if (first == follow)
-				{
-					follow = lead;
-					lead = second;
-				}
-				else if (second == follow)
-				{
-					follow = lead;
-					lead = first;
-				}
-				else
-				{
-					yield break;
-				}
-			}
-		}
-
-		// Always visits follow!
+		/// <summary>
+		/// Iterates over both sides of the face handle of a given vertex.
+		/// </summary>
+		/// <param name="vertex"></param>
+		/// <returns></returns>
 		public IEnumerable<Vertex<T>> IterateBothSides(Vertex<T> vertex)
 		{
 			return IterateBothSides(vertex.FaceHandle);
@@ -779,7 +831,7 @@
 		/// Iterates over both sides of the face in parallel until the root is found.
 		/// </summary>
 		/// <remarks>
-		/// Only "follow" vertices are returned. 
+		/// Always returns the "previous" vertex!
 		/// 
 		/// The first returned vertex is the anchor of a given face. Both iterators are then
 		/// advanced so that anchor point is not returned twice. After that, both iterators
@@ -836,5 +888,9 @@
 				}
 			}
 		}
+
+		#endregion
+
+		#endregion
 	}
 }
