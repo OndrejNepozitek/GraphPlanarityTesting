@@ -14,7 +14,7 @@
 			var visitor = new BasicVisitor<int>();
 			var dfsTraversal = new DFSTraversal();
 
-			dfsTraversal.TraverseRecursive(graph, 0, visitor);
+			dfsTraversal.Traverse(graph, 0, visitor);
 
 			Assert.That(visitor.DiscoveredVertices, Is.EquivalentTo(graph.Vertices));
 		}

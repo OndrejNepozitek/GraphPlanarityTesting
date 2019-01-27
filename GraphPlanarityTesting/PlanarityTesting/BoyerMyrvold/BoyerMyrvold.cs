@@ -79,7 +79,7 @@
 			// Use DFS traversal to add basic information to each of the vertices
 			var visitorNew = new DFSTraversalVisitor<T>();
 			var dfsTraversalNew = new DFSTraversal();
-			dfsTraversalNew.TraverseRecursive(transformedGraph, visitorNew);
+			dfsTraversalNew.Traverse(transformedGraph, visitorNew);
 
 			// Sort vertices by dfs number ASC
 			verticesByDFSNumberNew = BucketSort.Sort(transformedGraph.Vertices, x => x.DFSNumber, transformedGraph.VerticesCount);
