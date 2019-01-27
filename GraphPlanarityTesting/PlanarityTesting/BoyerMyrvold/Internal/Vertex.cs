@@ -1,10 +1,14 @@
-﻿namespace GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold
+﻿namespace GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold.Internal
 {
 	using System;
 	using System.Collections.Generic;
 	using Graphs.DataStructures;
 
-	public class Vertex<T> : IEquatable<Vertex<T>>
+	/// <summary>
+	/// Vertex with all its information as described in the original paper.
+	/// </summary>
+	/// <typeparam name="T"></typeparam>
+	internal class Vertex<T> : IEquatable<Vertex<T>>
 	{
 		public T Value { get; }
 

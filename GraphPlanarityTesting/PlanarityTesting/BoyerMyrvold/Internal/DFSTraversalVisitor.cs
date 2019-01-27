@@ -1,10 +1,10 @@
-﻿namespace GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold
+﻿namespace GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold.Internal
 {
 	using System;
 	using Graphs.Algorithms;
 	using Graphs.DataStructures;
 
-	public class DFSTraversalVisitor<T> : BaseDFSTraversalVisitor<Vertex<T>>
+	internal class DFSTraversalVisitor<T> : BaseDFSTraversalVisitor<Vertex<T>>
 	{
 		private int count;
 

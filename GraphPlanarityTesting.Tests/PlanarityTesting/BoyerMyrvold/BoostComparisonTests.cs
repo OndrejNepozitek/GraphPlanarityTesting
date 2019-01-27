@@ -12,7 +12,7 @@
 	/// Compares results from the algorithm with results from the Boost implementation.
 	/// </summary>
 	[TestFixture]
-	public class BoostComparison
+	public class BoostComparisonTests
 	{
 		[Test]
 		public void _5000LargeSparseGraphs()

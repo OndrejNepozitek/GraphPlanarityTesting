@@ -1,8 +1,8 @@
-﻿namespace GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold
+﻿namespace GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold.Internal
 {
 	using System.Collections.Generic;
 
-	public static class LinkedListExtensions
+	internal static class LinkedListExtensions
 	{
 		public static void AppendRange<T>(this LinkedList<T> source,
 			IEnumerable<T> items)

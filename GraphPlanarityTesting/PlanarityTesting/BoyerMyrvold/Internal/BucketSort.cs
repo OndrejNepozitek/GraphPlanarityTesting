@@ -1,9 +1,9 @@
-﻿namespace GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold
+﻿namespace GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold.Internal
 {
 	using System;
 	using System.Collections.Generic;
 
-	public class BucketSort
+	internal class BucketSort
 	{
 		public static T[] Sort<T>(IEnumerable<T> elements, Func<T, int> valueSelector, int bucketsCount)
 		{

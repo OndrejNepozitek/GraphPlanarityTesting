@@ -5,6 +5,7 @@
 	using System.Linq;
 	using Graphs.Algorithms;
 	using Graphs.DataStructures;
+	using Internal;
 	using PlanarFaceTraversal;
 
 	/// <summary>
@@ -321,7 +322,7 @@
 			}
 		}
 
-		public bool Walkdown(Vertex<T> vertex)
+		private bool Walkdown(Vertex<T> vertex)
 		{
 			// Original Boost comment:
 			// This procedure is where all of the action is - pertinent_roots
@@ -822,7 +823,7 @@
 		/// </summary>
 		/// <param name="vertex"></param>
 		/// <returns></returns>
-		public IEnumerable<Vertex<T>> IterateBothSides(Vertex<T> vertex)
+		private IEnumerable<Vertex<T>> IterateBothSides(Vertex<T> vertex)
 		{
 			return IterateBothSides(vertex.FaceHandle);
 		}
@@ -840,7 +841,7 @@
 		/// </remarks>
 		/// <param name="face"></param>
 		/// <returns></returns>
-		public IEnumerable<Vertex<T>> IterateBothSides(FaceHandle<Vertex<T>> face)
+		private IEnumerable<Vertex<T>> IterateBothSides(FaceHandle<Vertex<T>> face)
 		{
 			var firstEnumerable = IterateFirstSide(face, false);
 			var secondEnumerable = IterateSecondSide(face, false);
