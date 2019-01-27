@@ -4,8 +4,19 @@
 	using BoyerMyrvold;
 	using Graphs.DataStructures;
 
+	/// <summary>
+	/// Planar face traversal.
+	/// Inspired by Boost library.
+	/// </summary>
 	public class PlanarFaceTraversal
 	{
+		/// <summary>
+		/// Traverses planar face of a given embedding.
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="graph"></param>
+		/// <param name="embedding"></param>
+		/// <param name="visitor"></param>
 		public void Traverse<T>(IGraph<T> graph, PlanarEmbedding<T> embedding, IPlanarFaceTraversalVisitor<T> visitor)
 		{
 			var nextEdge = new Dictionary<IEdge<T>, Dictionary<T, IEdge<T>>>();
