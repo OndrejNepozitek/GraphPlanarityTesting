@@ -12,9 +12,7 @@
 		public void AllVerticesDiscovered(IGraph<int> graph)
 		{
 			var visitor = new BasicVisitor<int>();
-			var dfsTraversal = new DFSTraversal();
-
-			dfsTraversal.Traverse(graph, 0, visitor);
+			DFSTraversal.Traverse(graph, 0, visitor);
 
 			Assert.That(visitor.DiscoveredVertices, Is.EquivalentTo(graph.Vertices));
 		}

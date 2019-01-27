@@ -43,9 +43,8 @@
 				return false;
 			}
 
-			var planarFaceTraversal = new PlanarFaceTraversal();
 			var planarFaceVisitor = new GetPlanarFacesVisitor<T>();
-			planarFaceTraversal.Traverse(graph, embedding, planarFaceVisitor);
+			PlanarFaceTraversal.Traverse(graph, embedding, planarFaceVisitor);
 
 			faces = new PlanarFaces<T>(planarFaceVisitor.Faces);
 			return true;
@@ -77,9 +76,8 @@
 			mergeStackNew = new Stack<MergeInfo>();
 
 			// Use DFS traversal to add basic information to each of the vertices
-			var visitorNew = new DFSTraversalVisitor<T>();
-			var dfsTraversalNew = new DFSTraversal();
-			dfsTraversalNew.Traverse(transformedGraph, visitorNew);
+			var visitor = new DFSTraversalVisitor<T>();
+			DFSTraversal.Traverse(transformedGraph, visitor);
 
 			// Sort vertices by dfs number ASC
 			verticesByDFSNumberNew = BucketSort.Sort(transformedGraph.Vertices, x => x.DFSNumber, transformedGraph.VerticesCount);

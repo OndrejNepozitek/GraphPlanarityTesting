@@ -53,10 +53,8 @@
 							var vertexEmbedding = embedding.GetEdgesAroundVertex(vertex);
 							Assert.That(vertexEmbedding, Is.EquivalentTo(testData.Embedding[vertex]));
 						}
-
-						var planarFaceTraversal = new PlanarFaceTraversal();
 						var planarFaceVisitor = new GetPlanarFacesVisitor<int>();
-						planarFaceTraversal.Traverse(graph, embedding, planarFaceVisitor);
+						PlanarFaceTraversal.Traverse(graph, embedding, planarFaceVisitor);
 
 						Assert.That(planarFaceVisitor.Faces.Count, Is.EqualTo(testData.Faces.Count));
 
