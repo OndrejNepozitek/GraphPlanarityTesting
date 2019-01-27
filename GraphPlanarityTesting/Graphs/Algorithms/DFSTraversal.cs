@@ -5,7 +5,7 @@
 	using System.Linq;
 	using DataStructures;
 
-	public class DFSTraversal
+	public static class DFSTraversal
 	{
 		#region Non-recursive version
 
@@ -16,7 +16,7 @@
 		/// <param name="graph"></param>
 		/// <param name="startVertex"></param>
 		/// <param name="visitor"></param>
-		public void Traverse<T>(IGraph<T> graph, T startVertex, IDFSTraversalVisitor<T> visitor)
+		public static void Traverse<T>(IGraph<T> graph, T startVertex, IDFSTraversalVisitor<T> visitor)
 		{
 			var vertices = graph.Vertices.ToList();
 			var states = new Dictionary<T, State>();
@@ -46,12 +46,12 @@
 		/// <typeparam name="T"></typeparam>
 		/// <param name="graph"></param>
 		/// <param name="visitor"></param>
-		public void Traverse<T>(IGraph<T> graph, IDFSTraversalVisitor<T> visitor)
+		public static void Traverse<T>(IGraph<T> graph, IDFSTraversalVisitor<T> visitor)
 		{
 			Traverse(graph, graph.Vertices.First(), visitor);
 		}
 
-		private void Traverse<T>(IGraph<T> graph, T startVertex, IDFSTraversalVisitor<T> visitor, Dictionary<T, State> states)
+		private static void Traverse<T>(IGraph<T> graph, T startVertex, IDFSTraversalVisitor<T> visitor, Dictionary<T, State> states)
 		{
 			var stack = new Stack<VertexInfo<T>>();
 			stack.Push(new VertexInfo<T>(startVertex, graph.GetNeighbours(startVertex).GetEnumerator()));
@@ -105,7 +105,7 @@
 		#region Recursive version
 
 		[Obsolete("Use non-recursive version")]
-		internal void TraverseRecursive<T>(IGraph<T> graph, T startVertex, IDFSTraversalVisitor<T> visitor)
+		internal static void TraverseRecursive<T>(IGraph<T> graph, T startVertex, IDFSTraversalVisitor<T> visitor)
 		{
 			var vertices = graph.Vertices.ToList();
 			var states = new Dictionary<T, State>();
@@ -130,13 +130,13 @@
 		}
 
 		[Obsolete("Use non-recursive version")]
-		internal void TraverseRecursive<T>(IGraph<T> graph, IDFSTraversalVisitor<T> visitor)
+		internal static void TraverseRecursive<T>(IGraph<T> graph, IDFSTraversalVisitor<T> visitor)
 		{
 			TraverseRecursive(graph, graph.Vertices.First(), visitor);
 		}
 
 		[Obsolete("Use non-recursive version")]
-		private void TraverseRecursive<T>(IGraph<T> graph, T vertex, IDFSTraversalVisitor<T> visitor, Dictionary<T, State> states)
+		private static void TraverseRecursive<T>(IGraph<T> graph, T vertex, IDFSTraversalVisitor<T> visitor, Dictionary<T, State> states)
 		{
 			states[vertex] = State.Discovered;
 			visitor.DiscoverVertex(vertex, graph);

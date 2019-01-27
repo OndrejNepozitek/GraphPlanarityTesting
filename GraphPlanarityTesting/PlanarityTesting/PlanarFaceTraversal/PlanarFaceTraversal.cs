@@ -8,7 +8,7 @@
 	/// Planar face traversal.
 	/// Inspired by Boost library.
 	/// </summary>
-	public class PlanarFaceTraversal
+	public static class PlanarFaceTraversal
 	{
 		/// <summary>
 		/// Traverses planar face of a given embedding.
@@ -17,7 +17,7 @@
 		/// <param name="graph"></param>
 		/// <param name="embedding"></param>
 		/// <param name="visitor"></param>
-		public void Traverse<T>(IGraph<T> graph, PlanarEmbedding<T> embedding, IPlanarFaceTraversalVisitor<T> visitor)
+		public static void Traverse<T>(IGraph<T> graph, PlanarEmbedding<T> embedding, IPlanarFaceTraversalVisitor<T> visitor)
 		{
 			var nextEdge = new Dictionary<IEdge<T>, Dictionary<T, IEdge<T>>>();
 			var visited = new Dictionary<IEdge<T>, HashSet<T>>();
@@ -116,12 +116,12 @@
 			visitor.EndTraversal();
 		}
 
-		private IEdge<T> SwitchEdge<T>(IEdge<T> edge)
+		private static IEdge<T> SwitchEdge<T>(IEdge<T> edge)
 		{
 			return new Edge<T>(edge.Target, edge.Source);
 		}
 
-		private TValue GetCorrectEdgeValue<T, TValue>(Dictionary<IEdge<T>, TValue> dictionary, IEdge<T> edge)
+		private static TValue GetCorrectEdgeValue<T, TValue>(Dictionary<IEdge<T>, TValue> dictionary, IEdge<T> edge)
 		{
 			if (dictionary.ContainsKey(edge))
 			{
