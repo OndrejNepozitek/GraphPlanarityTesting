@@ -20,6 +20,11 @@
 
 			foreach (var vertex in graph.Vertices)
 			{
+				if (embedding[vertex] == null)
+				{
+					continue;
+				}
+
 				for (var i = 0; i < embedding[vertex].Count; i++)
 				{
 					var edge = embedding[vertex][i];

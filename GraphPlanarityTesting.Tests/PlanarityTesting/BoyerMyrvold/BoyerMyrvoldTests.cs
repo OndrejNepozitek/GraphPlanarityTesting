@@ -2,6 +2,7 @@
 {
 	using System;
 	using System.Collections.Generic;
+	using System.IO;
 	using GraphPlanarityTesting.Graphs.DataStructures;
 	using GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold;
 	using GraphPlanarityTesting.PlanarityTesting.PlanarFaceTraversal;
@@ -281,6 +282,9 @@
 			{
 				for (int length = 1; length < verticesCount; length++)
 				{
+					if (edges.Count == edgesCount)
+						break;
+
 					for (int i = 0; i < verticesCount - length; i++)
 					{
 						var j = i + length;

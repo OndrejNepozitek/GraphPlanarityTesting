@@ -14,7 +14,7 @@
 		private IEdge<T> cachedFirstEdge;
 		private IEdge<T> cachedSecondEdge;
 		private T anchor;
-		private LinkedList<IEdge<T>> edgeList;
+		private LinkedList<IEdge<T>> edgeList = new LinkedList<IEdge<T>>();
 
 		public T FirstVertex => cachedFirstVertex;
 
@@ -59,7 +59,7 @@
 
 		public void GlueFirstToSecond(FaceHandle<T> bottom)
 		{
-			if (edgeList == null)
+			if (edgeList == null || edgeList.Count == 0)
 			{
 				edgeList = new LinkedList<IEdge<T>>(bottom.edgeList);
 			}
@@ -75,7 +75,7 @@
 
 		public void GlueSecondToFirst(FaceHandle<T> bottom)
 		{
-			if (edgeList == null)
+			if (edgeList == null || edgeList.Count == 0)
 			{
 				edgeList = new LinkedList<IEdge<T>>(bottom.edgeList);
 			}

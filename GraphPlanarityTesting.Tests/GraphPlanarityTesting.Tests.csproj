@@ -16,4 +16,16 @@
     <ProjectReference Include="..\GraphPlanarityTesting\GraphPlanarityTesting.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Resources\10000_large_sparse_graphs.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\10000_small_dense_graphs.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\10000_small_sparse_graphs.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
