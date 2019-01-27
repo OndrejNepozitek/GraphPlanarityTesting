@@ -32,7 +32,7 @@
 		public void CompareWithBoost(string filename)
 		{
 			var path = TestContext.CurrentContext.TestDirectory + "\\Resources\\" + filename;
-			var boyerMyrvold = new BoyerMyrvold();
+			var boyerMyrvold = new BoyerMyrvold<int>();
 
 			using (var reader = File.OpenText(path))
 			{

@@ -14,7 +14,7 @@
 		[Test]
 		public void Test()
 		{
-			var boyerMyrvold = new BoyerMyrvold();
+			var boyerMyrvold = new BoyerMyrvold<int>();
 			var graph = new UndirectedAdjacencyListGraph<int>();
 
 			for (int i = 0; i < 5; i++)
@@ -52,7 +52,7 @@
 		[Test]
 		public void Test3()
 		{
-			var boyerMyrvold = new BoyerMyrvold();
+			var boyerMyrvold = new BoyerMyrvold<int>();
 			var graph = new UndirectedAdjacencyListGraph<int>();
 
 			for (int i = 0; i < 6; i++)
@@ -77,7 +77,7 @@
 		[Test]
 		public void Test4()
 		{
-			var boyerMyrvold = new BoyerMyrvold();
+			var boyerMyrvold = new BoyerMyrvold<int>();
 			var graph = new UndirectedAdjacencyListGraph<int>();
 
 			for (int i = 0; i < 5; i++)
@@ -98,7 +98,7 @@
 		[Test]
 		public void Test5()
 		{
-			var boyerMyrvold = new BoyerMyrvold();
+			var boyerMyrvold = new BoyerMyrvold<int>();
 			var graph = new UndirectedAdjacencyListGraph<int>();
 			var verticesCount = 10;
 
@@ -141,7 +141,7 @@
 				}
 			}
 
-			var boyerMyrvold = new BoyerMyrvold();
+			var boyerMyrvold = new BoyerMyrvold<int>();
 			foreach (var edges in graphs)
 			{
 				var graph = new UndirectedAdjacencyListGraph<int>();
@@ -163,7 +163,7 @@
 		[Test]
 		public void Test7()
 		{
-			var boyerMyrvold = new BoyerMyrvold();
+			var boyerMyrvold = new BoyerMyrvold<int>();
 			var graph = GetOneCycle(4);
 			boyerMyrvold.IsPlanar(graph, out var embedding);
 
@@ -178,7 +178,7 @@
 		[Test]
 		public void IsPlanar_OneCycleGraphs()
 		{
-			var boyerMyrvold = new BoyerMyrvold();
+			var boyerMyrvold = new BoyerMyrvold<int>();
 			const int minVertices = 3;
 			const int maxVertices = 1000;
 
@@ -198,7 +198,7 @@
 		[Test]
 		public void IsPlanar_RandomNonPlanarGraphs()
 		{
-			var boyerMyrvold = new BoyerMyrvold();
+			var boyerMyrvold = new BoyerMyrvold<int>();
 			var random = new Random();
 			const int graphsCount = 1000;
 			const int minVertices = 5;

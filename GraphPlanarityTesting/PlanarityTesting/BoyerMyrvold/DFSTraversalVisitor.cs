@@ -1,81 +1,61 @@
 ﻿namespace GraphPlanarityTesting.PlanarityTesting.BoyerMyrvold
 {
 	using System;
-	using System.Collections.Generic;
 	using Graphs.Algorithms;
 	using Graphs.DataStructures;
 
-	public class DFSTraversalVisitor<T> : BaseDFSTraversalVisitor<T>
+	public class DFSTraversalVisitor<T> : BaseDFSTraversalVisitor<Vertex<T>>
 	{
-		public Dictionary<T, int> DFSNumber { get; }
+		private int count;
 
-		public Dictionary<T, T> Parent { get; }
-
-		public Dictionary<T, int> LowPoint { get; }
-
-		public Dictionary<T, int> LeastAncestor { get; }
-
-		public Dictionary<T, IEdge<T>> DFSEdge { get; }
-
-		private int count = 0;
-
-		public DFSTraversalVisitor(Dictionary<T, int> dfsNumber, Dictionary<T, T> parent, Dictionary<T, int> lowPoint, Dictionary<T, int> leastAncestor, Dictionary<T, IEdge<T>> dfsEdge)
+		public override void StartVertex(Vertex<T> vertex, IGraph<Vertex<T>> graph)
 		{
-			DFSNumber = dfsNumber;
-			Parent = parent;
-			LowPoint = lowPoint;
-			LeastAncestor = leastAncestor;
-			DFSEdge = dfsEdge;
+			vertex.Parent = vertex;
+			vertex.LeastAncestor = count;
 		}
 
-		public override void StartVertex(T vertex, IGraph<T> graph)
+		public override void DiscoverVertex(Vertex<T> vertex, IGraph<Vertex<T>> graph)
 		{
-			Parent[vertex] = vertex;
-			LeastAncestor[vertex] = count;
-		}
-
-		public override void DiscoverVertex(T vertex, IGraph<T> graph)
-		{
-			LowPoint[vertex] = count;
-			DFSNumber[vertex] = count;
+			vertex.LowPoint = count;
+			vertex.DFSNumber = count;
 			count++;
 		}
 
-		public override void TreeEdge(IEdge<T> edge, IGraph<T> graph)
+		public override void TreeEdge(IEdge<Vertex<T>> edge, IGraph<Vertex<T>> graph)
 		{
 			var source = edge.Source;
 			var target = edge.Target;
 
-			Parent[target] = source;
-			DFSEdge[target] = edge;
-			LeastAncestor[target] = DFSNumber[source];
+			target.Parent = source;
+			target.DFSEdge = edge;
+			target.LeastAncestor = source.DFSNumber;
 		}
 
-		public override void BackEdge(IEdge<T> edge, IGraph<T> graph)
+		public override void BackEdge(IEdge<Vertex<T>> edge, IGraph<Vertex<T>> graph)
 		{
 			var source = edge.Source;
 			var target = edge.Target;
 
-			if (!target.Equals(Parent[source]))
+			if (target != source.Parent)
 			{
-				var sourceLowPoint = LowPoint[source];
-				var targetDFSNumber = DFSNumber[target];
-				var sourceLeastAncestorDFSNumber = LeastAncestor[source];
+				var sourceLowPoint = source.LowPoint;
+				var targetDFSNumber = target.DFSNumber;
+				var sourceLeastAncestorDFSNumber = source.LeastAncestor;
 
-				LowPoint[source] = Math.Min(sourceLowPoint, targetDFSNumber);
-				LeastAncestor[source] = Math.Min(sourceLeastAncestorDFSNumber, targetDFSNumber);
+				source.LowPoint = Math.Min(sourceLowPoint, targetDFSNumber);
+				source.LeastAncestor = Math.Min(sourceLeastAncestorDFSNumber, targetDFSNumber);
 			}
 		}
 
-		public override void FinishVertex(T vertex, IGraph<T> graph)
+		public override void FinishVertex(Vertex<T> vertex, IGraph<Vertex<T>> graph)
 		{
-			var lowPoint = LowPoint[vertex];
-			var parent = Parent[vertex];
-			var parentLowpoint = LowPoint[parent];
+			var lowPoint = vertex.LowPoint;
+			var parent = vertex.Parent;
+			var parentLowpoint = parent.LowPoint;
 
-			if (!Parent[vertex].Equals(vertex))
+			if (vertex != vertex.Parent)
 			{
-				LowPoint[parent] = Math.Min(lowPoint, parentLowpoint);
+				parent.LowPoint = Math.Min(lowPoint, parentLowpoint);
 			}
 		}
 	}
