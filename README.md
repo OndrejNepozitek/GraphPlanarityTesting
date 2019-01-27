@@ -1,4 +1,6 @@
 # GraphPlanarityTesting
+[![NuGet](https://img.shields.io/nuget/v/GraphPlanarityTesting.svg)](https://www.nuget.org/packages/GraphPlanarityTesting)
+
 C# implementation of the Boyer-Myrvold algorithm for planarity testing. Inspired by the implementaion from C++ Boost library. 
 
 Even though the original algorithm works in *O(n)*, this implementation has worst-case time complexity *O(n<sup>2</sup>)*. It is caused by the fact that I use standard linked list instead of a more sophisticated data structure in one place of the algorihtm. The original paper also provides an algorithm for extracting Kuratowski subgraph if a given graph is not planar - this is not implemented in this library.
