@@ -10,7 +10,7 @@
 
 	/// <summary>
 	/// Implementation of the Boyer-Myrvol algorithm.
-	/// Inspired by implementation in the Boost library.
+	/// Inspired by the implementation in the Boost library.
 	/// </summary>
 	/// <typeparam name="T">Vertex type.</typeparam>
 	public class BoyerMyrvold<T>
@@ -33,8 +33,8 @@
 		/// Tries to get faces of a planar embedding of a given graph.
 		/// </summary>
 		/// <param name="graph">Graph</param>
-		/// <param name="faces">Planar faces</param>
-		/// <returns>True if planar, otherwise false</returns>
+		/// <param name="faces">Faces of a planar embedding if planar, null otherwise</param>
+		/// <returns>True if planar, false otherwise</returns>
 		public bool TryGetPlanarFaces(IGraph<T> graph, out PlanarFaces<T> faces)
 		{
 			if (!IsPlanar(graph, out var embedding))
@@ -51,10 +51,10 @@
 		}
 
 		/// <summary>
-		/// Checks if a given graph is planar
+		/// Checks if a given graph is planar.
 		/// </summary>
-		/// <param name="graph"></param>
-		/// <returns></returns>
+		/// <param name="graph">Graph</param>
+		/// <returns>True if planar, false otherwise</returns>
 		public bool IsPlanar(IGraph<T> graph)
 		{
 			return IsPlanar(graph, out var _);
@@ -63,9 +63,9 @@
 		/// <summary>
 		/// Checks if a given graph is planar and provides a planar embedding if so.
 		/// </summary>
-		/// <param name="graph"></param>
-		/// <param name="embedding"></param>
-		/// <returns></returns>
+		/// <param name="graph">Graph</param>
+		/// <param name="embedding">Planar embedding if a given graph is planar, null otherwise</param>
+		/// <returns>True if planar, false otherwise</returns>
 		public bool IsPlanar(IGraph<T> graph, out PlanarEmbedding<T> embedding)
 		{
 			// Transforms input graph
