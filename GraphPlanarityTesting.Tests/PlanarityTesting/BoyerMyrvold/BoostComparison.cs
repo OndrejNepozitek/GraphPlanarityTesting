@@ -12,9 +12,9 @@
 	public class BoostComparison
 	{
 		[Test]
-		public void _10000LargeSparseGraphs()
+		public void _5000LargeSparseGraphs()
 		{
-			CompareWithBoost("10000_large_sparse_graphs.txt");
+			CompareWithBoost("5000_large_sparse_graphs.txt");
 		}
 
 		[Test]
@@ -24,9 +24,9 @@
 		}
 
 		[Test]
-		public void _10000SmallDenseGraphs()
+		public void _5000SmallDenseGraphs()
 		{
-			CompareWithBoost("10000_small_dense_graphs.txt");
+			CompareWithBoost("5000_small_dense_graphs.txt");
 		}
 
 		public void CompareWithBoost(string filename)
