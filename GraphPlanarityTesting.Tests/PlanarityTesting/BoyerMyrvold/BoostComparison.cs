@@ -8,6 +8,9 @@
 	using GraphPlanarityTesting.PlanarityTesting.PlanarFaceTraversal;
 	using NUnit.Framework;
 
+	/// <summary>
+	/// Compares results from the algorithm with results from the Boost implementation.
+	/// </summary>
 	[TestFixture]
 	public class BoostComparison
 	{
