@@ -6,7 +6,7 @@ C# implementation of the Boyer-Myrvold algorithm for planarity testing. Inspired
 Even though the original algorithm works in *O(n)*, this implementation has worst-case time complexity *O(n<sup>2</sup>)*. It is caused by the fact that I use standard linked list instead of a more sophisticated data structure in one place of the algorihtm. The original paper also provides an algorithm for extracting Kuratowski subgraph if a given graph is not planar - this is not implemented in this library.
 
 ## Features
-- Checks if a given undirect graph is planar or not
+- Checks if a given undirected graph is planar or not
 - Computes planar embedding if a given graph is planar
 - Computes faces of a given planar embedding
 - .NET Standard 2.0
