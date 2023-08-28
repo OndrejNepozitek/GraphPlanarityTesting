@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>$version$</version>
+    <title>$title$</title>
+    <authors>$author$</authors>
+    <owners>$author$</owners>
+    <projectUrl>https://github.com/Karatakos/planargraph</projectUrl>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$</description>
+    <releaseNotes>Bug Fix: Edge direction not persisting</releaseNotes>
+    <copyright>Copyright 2023</copyright>
+    <tags>Planar Graphs</tags>
+  </metadata>
+</package>
